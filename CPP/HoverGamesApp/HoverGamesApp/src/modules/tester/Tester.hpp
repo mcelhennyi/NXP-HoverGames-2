@@ -2,6 +2,8 @@
 #define MODULE_TESTER
 
 #include "utils/pipeline/module.hpp"
+#include <string>
+#include <iostream>
 
 namespace Scarecrow
 {

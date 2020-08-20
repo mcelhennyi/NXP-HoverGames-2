@@ -33,14 +33,14 @@
     <ClInclude Include="src\utils\module.hpp">
       <Filter>Source Files\src\utils\pipeline</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\module_pipeline.hpp">
-      <Filter>Source Files\src\utils\pipeline</Filter>
-    </ClInclude>
-    <ClInclude Include="pair.hpp">
-      <Filter>Source Files\src\utils\pipeline</Filter>
-    </ClInclude>
     <ClInclude Include="src\modules\tester\Tester.hpp">
       <Filter>Source Files\src\modules\tester</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\pipeline\module_pipeline.hpp">
+      <Filter>Source Files\src\utils\pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\pipeline\pair.hpp">
+      <Filter>Source Files\src\utils\pipeline</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

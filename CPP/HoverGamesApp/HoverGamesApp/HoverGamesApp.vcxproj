@@ -141,10 +141,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="pair.hpp" />
     <ClInclude Include="src\modules\tester\Tester.hpp" />
     <ClInclude Include="src\utils\module.hpp" />
-    <ClInclude Include="src\utils\module_pipeline.hpp" />
+    <ClInclude Include="src\utils\pipeline\module_pipeline.hpp" />
+    <ClInclude Include="src\utils\pipeline\pair.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\HoverGamesApp.cpp" />

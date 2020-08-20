@@ -3,8 +3,9 @@
 
 #include <iostream>
 
-#include "utils/pipeline/pair.hpp"
-//#include "utils/modules/tester/Tester.hpp"
+#include <utils/pipeline/pair.hpp>
+#include <utils/pipeline/module_pipeline.hpp>
+
 #include <modules/tester/Tester.hpp>
 
 
@@ -15,11 +16,19 @@ int main()
 
     auto tester1 = new Scarecrow::Modules::Tester("tester 1");
     auto tester2 = new Scarecrow::Modules::Tester("tester 2");
+    /*
+    auto tester3 = new Scarecrow::Modules::Tester("tester 3");
+    auto tester4 = new Scarecrow::Modules::Tester("tester 4");
+        */
 
-    auto paired = new Scarecrow::Utils::Pair<std::string, std::string, std::string>(tester1, tester2);
+    auto paired1 = new Scarecrow::Utils::Pair<std::string, std::string, std::string>(tester1, tester2);
+    /*
+    auto paired2 = new Scarecrow::Utils::Pair<std::string, std::string, std::string>(paired1, tester3);
+    auto paired3 = new Scarecrow::Utils::Pair<std::string, std::string, std::string>(paired2, tester4);
+     */
 
-    std::cout << "Pair output: " << paired->execute("TRIGGER INPUT") << std::endl;
-
+    //std::cout << "Pair output: " << paired3->execute("TRIGGER INPUT") << std::endl;
+    std::cout << "Pair output: " << paired1->execute("TRIGGER INPUT") << std::endl;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
