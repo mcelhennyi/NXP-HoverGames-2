@@ -4,6 +4,10 @@
 
 #include "module.hpp";
 
+#include <vector>
+#include <thread>
+#include <atomic>
+
 namespace Scarecrow
 {
     namespace Utils
@@ -11,8 +15,8 @@ namespace Scarecrow
         class ModulePipeline
         {
         public:
-            ModulePipeline();
-            ~ModulePipeline();
+            ModulePipeline() {};
+            ~ModulePipeline() {};
 
         public:
             void addModule(Module * module)
