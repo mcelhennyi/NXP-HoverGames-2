@@ -366,3 +366,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+
+docker/*tar.gz
+docker/run.sh
+docker/clion*
+
+
+CPP/air_process/.idea/*
+CPP/air_process/cmake-*
+*.bin
