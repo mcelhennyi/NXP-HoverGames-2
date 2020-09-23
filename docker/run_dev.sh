@@ -17,7 +17,7 @@ docker build -t $DOCKER_IMAGE_NAME .
 if [ ! "$(docker ps -q -f name=$DOCKER_CONTAINER_NAME)" ]; then
     if [ "$(docker ps -aq -f status=exited -f name=$DOCKER_CONTAINER_NAME)" ]; then
         # Use the old one
-        echo "Found the container already setup, using this one."
+        echo "Found the container, exited, starting and attaching."
         winpty docker start -ai $DOCKER_CONTAINER_NAME
     fi
 
@@ -29,6 +29,12 @@ if [ ! "$(docker ps -q -f name=$DOCKER_CONTAINER_NAME)" ]; then
         -e DISPLAY=host.docker.internal:0 \
         -v $HOST_PATH:/home/user/hovergames2 \
         -it $DOCKER_IMAGE_NAME bash
+else
+    if [ "$(docker ps -aq -f status=running -f name=$DOCKER_CONTAINER_NAME)" ]; then
+        # Use the old one
+        echo "Found the container already running, using this one."
+        winpty docker exec -it $DOCKER_CONTAINER_NAME bash
+    fi
 fi
 
 
