@@ -23,14 +23,14 @@ using namespace Messaging::Messages::Common;
 using namespace Messaging::Messages::Agent;
 using namespace Messaging::Messages::Controller;
 
-#define CALLBACK_HANDLER_THREADS 10  // note work is done in these threads, so we may need more.
+#define CALLBACK_HANDLER_THREAD_COUNT 10  // note work is done in these threads, so we may need more.
 
 namespace Messaging
 {
     class Communicator
     {
     public:
-        Communicator(char myId): _myId(myId), _threadPool(10) {};
+        Communicator(char myId): _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT) {};
         ~Communicator() {};
 
         void setId(char id) { _myId = id; };
