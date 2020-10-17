@@ -1,4 +1,5 @@
 # NXP HoverGames Challenge 2: Help Drones, Help Others During Pandemics with NXP
+![](https://github.com/mcelhennyi/NXP-HoverGames-2/blob/master/SCAREcrow_logo.png)
 
 ## Our goal
 Wild animals destroy property, kill/infect livestock, as well as harm agriculture. We will create a drone that can herd wild animals, preventing such harm.
