@@ -13,7 +13,7 @@ In this repo you will find our C++ code for our drone and our ground station.
 ## How does our software work?
 Our system has three first class citizens:  
 1) The Agent(s) (drone) - a node.
-2) The Base station - the central, main, node.
+2) The Base Station - the central, main, node.
 3) The Controller(s) - a node.
 
 The scene consists of two players:  
@@ -26,7 +26,7 @@ The RL algorithm and the animal classifier/tracker run on the `controller` node.
 
 ## Related Repositories
 [Here](https://github.com/ajberlier/SCAREcrow) you can find our RL + Neural Network related code for:  
-1) detecting animals and  
+1) Detecting animals and  
 2) Directing agents (drones) to herd the detected animals.
 
 ## Notes
