@@ -1,0 +1,3 @@
+[submodule "CPP/HoverGames2/src/utils/thread/threadPool"]
+	path = CPP/HoverGames2/src/utils/thread/threadPool
+	url = https://github.com/ganler/thread_pools.git
