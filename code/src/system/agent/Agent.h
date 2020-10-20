@@ -5,7 +5,7 @@
 #ifndef HOVERGAMES2_AGENT_H
 #define HOVERGAMES2_AGENT_H
 
-#include
+#include "../Runnable.h"
 #include "../../messaging/DroneCommunicator.h"
 
 namespace System

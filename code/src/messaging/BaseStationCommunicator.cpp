@@ -24,5 +24,20 @@ namespace Messaging
         // TODO TX message
 
     }
+
+    void BaseStationCommunicator::forwardAgentLocation(char targetId, AgentLocation *agentLocationMessage)
+    {
+
+    }
+
+    void BaseStationCommunicator::forwardSubjectLocation(char targetId, SubjectLocation *subjectLocationMessage)
+    {
+
+    }
+
+    void BaseStationCommunicator::sendAgentMove(char targetId, Location targetLoaction)
+    {
+
+    }
 }
 

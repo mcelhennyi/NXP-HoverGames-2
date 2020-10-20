@@ -99,6 +99,7 @@ namespace System
         if(!isAgent(agentLocation->header.source_id))
         {
             std::cout << "Error, agent location from non agent node" << std::endl;
+            return;
         }
 
         // Broad cast to all controllers
@@ -119,6 +120,7 @@ namespace System
         if(!isController(subjectLocation->header.source_id))
         {
             std::cout << "Error, subject location from non controller node" << std::endl;
+            return;
         }
 
         // Broad cast to all controllers
@@ -139,14 +141,11 @@ namespace System
         if(!isController(agentMoveCommand->header.source_id))
         {
             std::cout << "Error, agent move command from non controller node" << std::endl;
+            return;
         }
 
-        // Broad cast to all controllers
-        for(auto controllerId: _activeControllers)
-        {
-            // Send the subject location out to each of the controllers registered
-            _communicator->forwardSubjectLocation(controllerId, subjectLocation);
-        }
+        // TODO: Make sure this controller owns control of this agent
+        // TODO: Send to agent
     }
 
     bool BaseStation::isAgent(char nodeId)

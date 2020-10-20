@@ -24,7 +24,7 @@ namespace Messaging
 
             struct SubjectLocation
             {
-                Header              header;
+                Common::Header      header;
                 char                subject_id;         // The ID of the subject
                 char                type_id;            // The SubjectType enum of the subject
                 char                _padding[6];        // Padding for alignment

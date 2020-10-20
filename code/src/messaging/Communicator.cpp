@@ -45,5 +45,21 @@ namespace Messaging
         return sendAck(targetId, messageIdAcked, messageTimestamp, acked, &(commStruct->second));
     }
 
+    void Communicator::setupListeners()
+    {
+
+    }
+
+    void Communicator::startListening()
+    {
+
+    }
+
+    void Communicator::registerCallback(Messaging::Messages::Common::MessageID messageId,
+                                        std::function<void(char *)> callback)
+    {
+
+    }
+
 }
 

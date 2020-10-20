@@ -11,7 +11,7 @@ namespace Utils
 {
     namespace Time
     {
-        unsigned long microsNow()
+        inline unsigned long microsNow()
         {
             return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         }

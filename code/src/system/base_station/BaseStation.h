@@ -52,6 +52,8 @@ namespace System
         std::vector<char> _activeAgents;
         std::vector<char> _activeControllers;
 
+        std::map<char, char> _agentOwnerMap; // Agent (first) <-- Owner (second)
+
     };
 }
 
