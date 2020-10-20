@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread/threadPool/)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 add_executable(
         HoverGames2
         main.cpp
@@ -30,3 +32,7 @@ add_executable(
         src/system/Runnable.h
         src/utils/time.h
 )
+
+TARGET_LINK_LIBRARIES( HoverGames2
+        pthread
+        )

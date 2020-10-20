@@ -6,22 +6,26 @@
 #define HOVERGAMES2_BASESTATION_H
 
 #include <vector>
+
 #include "../../messaging/BaseStationCommunicator.h"
+
+#include "../Runnable.h"
 
 #define NODE_ID_START 5
 
 namespace System
 {
-    class BaseStation
+    class BaseStation: public Runnable
     {
     public:
 
-        BaseStation() {};
+        BaseStation();
 
-        ~BaseStation() {};
+        ~BaseStation();
 
-        void setup();
-        void run();
+        void doSetup() override;
+        void doRun() override;
+        void doStop() override;
 
     private:
 
@@ -42,17 +46,34 @@ namespace System
         bool isController(char nodeId);
 
     private:
+
+        struct ControllerParams
+        {
+            Location        controllerToBaseOffset;
+        };
+
+        struct AgentParams
+        {
+            unsigned long   lastLocationUpdateTime;
+            Location        agentLocation;
+
+            // Origin location
+            bool            originSet;
+            Location        agentOriginOffset;
+        };
+
         bool _running;
         int _nodeCount;
 
         // Communicator to talk out of this process
-        Messaging::BaseStationCommunicator *_communicator;
+        Messaging::BaseStationCommunicator      *_communicator;
 
-        // Keep track of acks
-        std::vector<char> _activeAgents;
-        std::vector<char> _activeControllers;
+        // Track the agents and controllers
+        std::map<char, AgentParams>             _activeAgents;
+        std::map<char, ControllerParams>        _activeControllers;
 
-        std::map<char, char> _agentOwnerMap; // Agent (first) <-- Owner (second)
+        std::map<char, char>                    _agentOwnerMap; // Agent (first) <-- Owner (second)
+
 
     };
 }

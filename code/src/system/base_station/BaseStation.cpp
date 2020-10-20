@@ -6,9 +6,25 @@
 #include <unistd.h>
 #include "BaseStation.h"
 
+// TODO: With multiagent use, a configuration or global positioning will need instead of this #def - possibly
+//  over messaging. (local is quicker and easier to work with initially)
+#define AGENT_X_OFFSET 0 // forward
+#define AGENT_Y_OFFSET 2 // meters (right)
+#define AGENT_Z_OFFSET 2 // meters (down)
+
 namespace System
 {
-    void BaseStation::setup()
+    BaseStation::BaseStation(): Runnable(1.0) // 1 hz
+    {
+
+    }
+
+    BaseStation::~BaseStation()
+    {
+
+    }
+
+    void BaseStation::doSetup()
     {
         // Start anything that needs to be kicked off
         _communicator->setupListeners();
@@ -38,15 +54,15 @@ namespace System
         );
     }
 
-    void BaseStation::run()
+    void BaseStation::doRun()
     {
-        _running = true;
+        // Called specified rate in constructor
+        std::cout << "RUN!" << std::endl;
+    }
 
-        while(_running)
-        {
-            // Do coordinated logic here
-            usleep(1000000 * 100);
-        }
+    void BaseStation::doStop()
+    {
+        _running = false;
     }
 
     // -------------------------- //
@@ -64,11 +80,19 @@ namespace System
         // Mark this node down as an agent or a controller
         if(hello->node_type == NodeType::NODE_TYPE_AGENT)
         {
-            _activeAgents.emplace_back(nodeId);
+            // Set the agent params - the origin will be set below on first location message after HELLO message
+            AgentParams agentParams;
+            agentParams.lastLocationUpdateTime = 0;
+            _activeAgents.emplace(std::make_pair(nodeId, agentParams));
         }
         else if(hello->node_type == NodeType::NODE_TYPE_CONTROLLER)
         {
-            _activeControllers.emplace_back(nodeId);
+            ControllerParams controllerParams;
+            // TODO: These eventually will come from the hello message (likely) for now we assume same position as base.
+            controllerParams.controllerToBaseOffset.x = 0;
+            controllerParams.controllerToBaseOffset.y = 0;
+            controllerParams.controllerToBaseOffset.z = 0;
+            _activeControllers.emplace(std::make_pair(nodeId, controllerParams));
         }
         else
         {
@@ -106,7 +130,7 @@ namespace System
         for(auto controllerId: _activeControllers)
         {
             // Send the agent location out to each of the controllers registered
-            _communicator->forwardAgentLocation(controllerId, agentLocation);
+            _communicator->forwardAgentLocation(controllerId.first, agentLocation);
         }
     }
 
@@ -127,7 +151,7 @@ namespace System
         for(auto controllerId: _activeControllers)
         {
             // Send the subject location out to each of the controllers registered
-            _communicator->forwardSubjectLocation(controllerId, subjectLocation);
+            _communicator->forwardSubjectLocation(controllerId.first, subjectLocation);
         }
     }
 
@@ -144,16 +168,40 @@ namespace System
             return;
         }
 
-        // TODO: Make sure this controller owns control of this agent
-        // TODO: Send to agent
+        // Make sure this controller owns control of this agent
+        auto agentOwnerItem = _agentOwnerMap.find(agentMoveCommand->agent_id);
+        if(agentOwnerItem == _agentOwnerMap.end() || agentOwnerItem->second != agentMoveCommand->header.source_id)
+        {
+            std::cout << "Controller, " << agentMoveCommand->header.source_id << " does not own " << agentMoveCommand->agent_id << std::endl;
+            return;
+        }
+
+        // Grab this controllers details
+        auto controller = _activeControllers.find(agentMoveCommand->header.source_id);
+        if(controller != _activeControllers.end())
+        {
+            std::cout << "Controller not found, " <<  agentMoveCommand->header.source_id << std::endl;
+        }
+
+        // Transform move to drone coordinates
+        Location transformedLocation;
+        transformedLocation.x = agentMoveCommand->target_location.x + controller->second.controllerToBaseOffset.x - AGENT_X_OFFSET;
+        transformedLocation.y = agentMoveCommand->target_location.y + controller->second.controllerToBaseOffset.y - AGENT_Y_OFFSET;
+        transformedLocation.z = agentMoveCommand->target_location.z + controller->second.controllerToBaseOffset.z - AGENT_Z_OFFSET;
+
+        // Send to agent
+        _communicator->sendAgentMove(agentMoveCommand->agent_id, transformedLocation);
+
     }
 
+
+    // TYPE checker helpers
     bool BaseStation::isAgent(char nodeId)
     {
         bool found = false;
         for(auto id: _activeAgents)
         {
-            if(id == nodeId)
+            if(id.first == nodeId)
             {
                 found = true;
                 break;
@@ -167,7 +215,7 @@ namespace System
         bool found = false;
         for(auto id: _activeControllers)
         {
-            if(id == nodeId)
+            if(id.first == nodeId)
             {
                 found = true;
                 break;
