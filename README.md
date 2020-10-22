@@ -1,6 +1,7 @@
 ![](https://github.com/mcelhennyi/NXP-HoverGames-2/blob/master/SCAREcrow_logo.png)
 
-# SCAREcrow: Sentinel Conservation via Aerial Reconnaissance and Escort
+# SCAREcrow
+## Sentinel Conservation via Aerial Reconnaissance and Escort
 **NXP HoverGames Challenge 2: Help Drones, Help Others During Pandemics with NXP**
 
 ## Our goal
