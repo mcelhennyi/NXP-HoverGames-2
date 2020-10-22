@@ -4,6 +4,10 @@
 ## Sentinel Conservation via Aerial Reconnaissance and Escort
 **NXP HoverGames Challenge 2: Help Drones, Help Others During Pandemics with NXP**
 
+## Authors
+[Ian McElhenny](https://www.linkedin.com/in/ian-mcelhenny-0a51858b/)  
+[Adam Berlier](https://www.linkedin.com/in/ajberlier/)
+
 ## Our goal
 Wild animals destroy property, kill/infect livestock, as well as harm agriculture. We will create a drone that can herd wild animals, preventing such harm.
 
