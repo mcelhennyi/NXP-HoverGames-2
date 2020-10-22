@@ -17,8 +17,8 @@ namespace Messaging
             {
                 Header          header;
                 unsigned long   acked_message_timestamp;    // The timestamp of the acked message
-                char            message_id;                 // The acked message
-                char            ack_bool;                   // 0 for false, anything else for true
+                unsigned char   message_id;                 // The acked message
+                unsigned char   ack_bool;                   // 0 for false, anything else for true
             };
         }
     }

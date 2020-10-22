@@ -22,19 +22,19 @@ namespace Messaging
 
             struct IPAddress
             {
-                char ip1;
-                char ip2;
-                char ip3;
-                char ip4;
+                unsigned char ip1;
+                unsigned char ip2;
+                unsigned char ip3;
+                unsigned char ip4;
             };
 
             struct Hello
             {
                 Header header;
-                char node_type;      // NodeType Enum above
-                short listeningPort;  // The IP port this device listens on
-                char _padding[5];
-                IPAddress address;        // The IP address of this device
+                unsigned char node_type;        // NodeType Enum above
+                unsigned short listeningPort;   // The IP port this device listens on
+                unsigned char _padding[5];
+                IPAddress address;              // The IP address of this device
             };
         }
     }

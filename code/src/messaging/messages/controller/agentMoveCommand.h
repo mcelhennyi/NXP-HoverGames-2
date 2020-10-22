@@ -17,8 +17,8 @@ namespace Messaging
             struct AgentMoveCommand
             {
                 Common::Header      header;
-                char                agent_id;           // The ID of the agent
-                char                _padding[7];        // Padding for alignment
+                unsigned char       agent_id;           // The ID of the agent
+                unsigned char       _padding[7];        // Padding for alignment
 
                 Common::Location    target_location;    // The target location for the agent
             };

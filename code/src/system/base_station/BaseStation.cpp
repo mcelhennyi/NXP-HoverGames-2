@@ -81,13 +81,13 @@ namespace System
         if(hello->node_type == NodeType::NODE_TYPE_AGENT)
         {
             // Set the agent params - the origin will be set below on first location message after HELLO message
-            AgentParams agentParams;
+            AgentParams agentParams = {};
             agentParams.lastLocationUpdateTime = 0;
             _activeAgents.emplace(std::make_pair(nodeId, agentParams));
         }
         else if(hello->node_type == NodeType::NODE_TYPE_CONTROLLER)
         {
-            ControllerParams controllerParams;
+            ControllerParams controllerParams = {};
             // TODO: These eventually will come from the hello message (likely) for now we assume same position as base.
             controllerParams.controllerToBaseOffset.x = 0;
             controllerParams.controllerToBaseOffset.y = 0;
@@ -184,7 +184,7 @@ namespace System
         }
 
         // Transform move to drone coordinates
-        Location transformedLocation;
+        Location transformedLocation = {};
         transformedLocation.x = agentMoveCommand->target_location.x + controller->second.controllerToBaseOffset.x - AGENT_X_OFFSET;
         transformedLocation.y = agentMoveCommand->target_location.y + controller->second.controllerToBaseOffset.y - AGENT_Y_OFFSET;
         transformedLocation.z = agentMoveCommand->target_location.z + controller->second.controllerToBaseOffset.z - AGENT_Z_OFFSET;

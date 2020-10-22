@@ -16,7 +16,7 @@ namespace Messaging
             struct Welcome
             {
                 Header header;
-                char node_id;    // The assigned ID
+                unsigned char node_id;    // The assigned ID
             };
         }
     }

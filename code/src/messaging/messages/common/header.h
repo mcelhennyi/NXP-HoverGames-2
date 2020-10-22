@@ -33,10 +33,10 @@ namespace Messaging
 
             struct Header
             {
-                char            message_id;     // The message's id
-                char            source_id;      // The Source of the message
-                char            target_id=0;    // The target of the message - 255 for broadcast
-                char            _padding[5];    // Unused - for alignment
+                unsigned char   message_id;     // The message's id
+                unsigned char   source_id;      // The Source of the message
+                unsigned char   target_id=0;    // The target of the message - 255 for broadcast
+                unsigned char   _padding[5];    // Unused - for alignment
                 unsigned long   timestamp;      // This message creation time
             };
         }

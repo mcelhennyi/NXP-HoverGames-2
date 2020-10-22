@@ -17,9 +17,9 @@ namespace Messaging
             struct AgentLocation
             {
                 Common::Header      header;
-                char                agent_id;           // The ID of the agent
-                char                owner_id;           // The owner of the agent
-                char                _padding[6];        // Padding for alignment
+                unsigned char       agent_id;           // The ID of the agent
+                unsigned char       owner_id;           // The owner of the agent
+                unsigned char       _padding[6];        // Padding for alignment
 
                 Common::Location    current_location;   // The current location of the agent
                 Common::Location    target_location;    // The target location of the agent

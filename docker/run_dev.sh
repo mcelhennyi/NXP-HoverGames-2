@@ -13,7 +13,6 @@ docker build -t $DOCKER_IMAGE_NAME .
 
 # Run the development docker with the details needed to use it for dev work.
 # Requires: Xming, volume sharing
-
 if [ ! "$(docker ps -q -f name=$DOCKER_CONTAINER_NAME)" ]; then
     if [ "$(docker ps -aq -f status=exited -f name=$DOCKER_CONTAINER_NAME)" ]; then
         # Use the old one
