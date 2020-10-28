@@ -154,7 +154,6 @@ namespace Messaging
         message.acked_message_timestamp = messageTimestamp;
         message.ack_bool = acked;
         sendMessage(*commDetails, (char*)&message, sizeof(Ack));
-
         return false;
     }
 
