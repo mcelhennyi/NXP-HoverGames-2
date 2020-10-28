@@ -1,4 +1,5 @@
 import struct
+import time
 
 # Written/Copied on 10/21/2020
 
@@ -30,6 +31,23 @@ MESSAGE_WELCOME = 3
 MESSAGE_AGENT_MOVE_COMMAND = 4
 MESSAGE_SUBJECT_LOCATION = 5
 MESSAGE_AGENT_LOCATION = 6
+
+
+def convert_enum_to_str(enum_val):
+    if enum_val == MESSAGE_ACK:
+        return "MESSAGE_ACK"
+    elif enum_val == MESSAGE_HELLO:
+        return "MESSAGE_HELLO"
+    elif enum_val == MESSAGE_WELCOME:
+        return "MESSAGE_WELCOME"
+    elif enum_val == MESSAGE_AGENT_MOVE_COMMAND:
+        return "MESSAGE_AGENT_MOVE_COMMAND"
+    elif enum_val == MESSAGE_SUBJECT_LOCATION:
+        return "MESSAGE_SUBJECT_LOCATION"
+    elif enum_val == MESSAGE_AGENT_LOCATION:
+        return "MESSAGE_AGENT_LOCATION"
+    else:
+        return "UNKNOWN_MESSAGE"
 
 
 # struct Header
@@ -143,14 +161,47 @@ agent_location = "BBxxxxxx" + location + location
 
 
 class Message:
-    def __init__(self, raw_bytes):
-        # pull off the header
-        self._header_tuple = struct.unpack(header, raw_bytes)
+    def __init__(self, raw_bytes=None, message_id=None, source_id=None, target_id=None):
 
+        # Setup time for when we create these messages
+        if raw_bytes is None:
+            # No bytes, we are making a message
+            self._header_tuple = (message_id, source_id, target_id, int(time.time() * 1000))
+        else:
+            # pull off the header
+            self._header_tuple = struct.unpack(header, raw_bytes)
+
+        # Keep the raw bites
         self._raw_bytes = raw_bytes
+
+    def get_bytes(self):
+        return struct.pack(
+            header,
+
+            # Message ID
+            self._header_tuple[0],
+
+            # Source ID
+            self._header_tuple[1],
+
+            # Target ID
+            self._header_tuple[2],
+
+            # Timestamp
+            self._header_tuple[3]
+        )
 
     def unpack(self, fmt):
         return struct.unpack_from(fmt, self._raw_bytes, struct.calcsize(header))  # TODO might need +1
 
     def get_message_id(self):
         return self._header_tuple[0]
+
+    def get_source_id(self):
+        return self._header_tuple[1]
+
+
+if __name__ == '__main__':
+    bytess = struct.pack(header, 0, 1, 2, 3)
+    tup = struct.unpack_from(header, bytess)
+    print(tup)

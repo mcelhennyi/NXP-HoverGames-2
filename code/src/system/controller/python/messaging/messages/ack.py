@@ -8,7 +8,7 @@ class AckMessage(Message):
         Message.__init__(self, raw_bytes)
 
         # Parse this message
-        self._ack_tuple = struct.unpack(ack, raw_bytes)
+        self._ack_tuple = self.unpack(ack)
 
     def get_acked_message_timestamp(self):
         return self._hello_tuple[0]
