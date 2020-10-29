@@ -127,12 +127,15 @@ class ControllerInterface:
             )
             self._sock.sendto(hello_msg.get_bytes(), (self._base_address, self._base_port))
             time.sleep(1)
+            break
         print("Connected!")
 
     def _listener(self):
         print("Listening on port " + str(self._port) + " for messages.")
         while self._running:
+            print("waiting on message")
             data, address = self._sock.recvfrom(1024)
+            print("REceived message")
 
             # Parse for a Message
             message = self._on_new_message(data)
@@ -146,8 +149,10 @@ class ControllerInterface:
 
     def _handle_message(self, message):
         if message.get_message_id() == MESSAGE_WELCOME:
+            print("MESSAGE_WELCOME RECEIVED")
             self._handle_welcome(message)
         elif message.get_message_id() == MESSAGE_AGENT_LOCATION:
+            print("MESSAGE_AGENT_LOCATION RECEIVED")
             self._handle_agent_location(message)
         else:
             print("Ignoring message with ID, " + str(message.get_message_id()) + ", for now.")

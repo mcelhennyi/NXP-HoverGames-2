@@ -6,46 +6,67 @@
 
 namespace Messaging
 {
-    Communicator::Communicator(char myId): Runnable(20.0f), _sockfd(-1), _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT)
+    Communicator::Communicator(char myId): Runnable(20.0f), _sockfdReceive(-1), _sockfdSend(-1), _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT)
     {
 
     }
 
     Communicator::~Communicator()
     {
-        if(_sockfd != -1)
+        if(_sockfdReceive != -1)
         {
-            close(_sockfd);
-            _sockfd = -1;
+            close(_sockfdReceive);
+            _sockfdReceive = -1;
+        }
+        if(_sockfdSend != -1)
+        {
+            close(_sockfdSend);
+            _sockfdSend = -1;
         }
     }
 
     void Communicator::doSetup()
     {
-        struct sockaddr_in servaddr, cliaddr;
+        struct sockaddr_in servaddrSend, servaddrReceive;
 
         // Creating socket file descriptor
-        if ( (_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+        if ( (_sockfdReceive = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
             perror("socket creation failed");
             exit(EXIT_FAILURE);
         }
 
-        memset(&servaddr, 0, sizeof(servaddr));
-        memset(&cliaddr, 0, sizeof(cliaddr));
+        // Creating socket file descriptor
+        if ( (_sockfdSend = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+            perror("socket creation failed");
+            exit(EXIT_FAILURE);
+        }
+
+        memset(&servaddrSend, 0, sizeof(servaddrSend));
+        memset(&servaddrReceive, 0, sizeof(servaddrReceive));
 
         // Filling server information
-        servaddr.sin_family    = AF_INET; // IPv4
-        servaddr.sin_addr.s_addr = INADDR_ANY;
-        servaddr.sin_port = htons(PORT);
+        servaddrReceive.sin_family    = AF_INET; // IPv4
+        servaddrReceive.sin_addr.s_addr = INADDR_ANY;
+        servaddrReceive.sin_port = htons(PORT);
+
+        servaddrSend.sin_family    = AF_INET; // IPv4
+        servaddrSend.sin_addr.s_addr = INADDR_ANY;
+        servaddrSend.sin_port = htons(PORT-1);
 
         struct timeval read_timeout;
         read_timeout.tv_sec = 0;
         read_timeout.tv_usec = 10;
-        setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
+        setsockopt(_sockfdReceive, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
 
         // Bind the socket with the server address
-        if ( bind(_sockfd, (const struct sockaddr *)&servaddr,
-                  sizeof(servaddr)) < 0 )
+        if ( bind(_sockfdReceive, (const struct sockaddr *)&servaddrReceive, sizeof(servaddrReceive)) < 0 )
+        {
+            perror("bind failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // Bind the socket with the server address
+        if ( bind(_sockfdSend, (const struct sockaddr *)&servaddrSend, sizeof(servaddrSend)) < 0 )
         {
             perror("bind failed");
             exit(EXIT_FAILURE);
@@ -55,7 +76,7 @@ namespace Messaging
     void Communicator::doRun()
     {
         int length = recv(
-                _sockfd,
+                _sockfdReceive,
                 (char *)_buffer,
                 MAXLINE,
                 MSG_WAITFORONE
@@ -129,10 +150,15 @@ namespace Messaging
 
     void Communicator::doStop()
     {
-        if(_sockfd != -1)
+        if(_sockfdReceive != -1)
         {
-            close(_sockfd);
-            _sockfd = -1;
+            close(_sockfdReceive);
+            _sockfdReceive = -1;
+        }
+        if(_sockfdSend != -1)
+        {
+            close(_sockfdSend);
+            _sockfdSend = -1;
         }
     }
 
@@ -212,9 +238,12 @@ namespace Messaging
     {
         struct sockaddr_in servaddr{};
         servaddr.sin_addr.s_addr = inet_addr(commDetails.ipAddr.c_str());
-        servaddr.sin_port = commDetails.port;
+        servaddr.sin_port = 12345;
+
+        auto dat = sizeof(sockaddr_in);
+
         int ret = sendto(
-                _sockfd,
+                _sockfdSend,
                 (const char *)message,
                 length,
                 0,

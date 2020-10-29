@@ -96,7 +96,8 @@ namespace Messaging
         std::map<unsigned char, std::function<void(char*)>> _callbacks;
 
         // Receiver stuff
-        int                                                 _sockfd;
+        int                                                 _sockfdReceive;
+        int                                                 _sockfdSend;
         char                                                _buffer[MAXLINE];
 
     };
