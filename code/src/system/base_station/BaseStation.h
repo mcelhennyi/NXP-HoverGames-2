@@ -11,6 +11,7 @@
 
 #include "../Runnable.h"
 
+#define BASE_ID 4
 #define NODE_ID_START 5
 
 namespace System
@@ -62,8 +63,8 @@ namespace System
             Location        agentOriginOffset;
         };
 
-        bool _running;
-        int _nodeCount;
+        bool                                    _running;
+        int                                     _nodeCount;
 
         // Communicator to talk out of this process
         Messaging::BaseStationCommunicator      *_communicator;

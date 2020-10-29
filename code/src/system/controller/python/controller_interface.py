@@ -127,6 +127,7 @@ class ControllerInterface:
             )
             self._sock.sendto(hello_msg.get_bytes(), (self._base_address, self._base_port))
             time.sleep(1)
+        print("Connected!")
 
     def _listener(self):
         print("Listening on port " + str(self._port) + " for messages.")

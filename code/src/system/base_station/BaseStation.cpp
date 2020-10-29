@@ -16,19 +16,16 @@ namespace System
 {
     BaseStation::BaseStation(): Runnable(1.0) // 1 hz
     {
-
+        _communicator = new Messaging::BaseStationCommunicator(BASE_ID);
     }
 
     BaseStation::~BaseStation()
     {
-
+        delete _communicator;
     }
 
     void BaseStation::doSetup()
     {
-        // Start anything that needs to be kicked off
-        _communicator->setupListeners();
-
         // Subscribe to any specific messages
         _communicator->registerCallback(
                 Messaging::Messages::Common::MessageID::MESSAGE_HELLO,
@@ -52,6 +49,10 @@ namespace System
                 Messaging::Messages::Common::MessageID::MESSAGE_AGENT_MOVE_COMMAND,
                 [&](char * msg) { handleAgentMoveCommand(msg); }
         );
+
+        // Run the comms
+        _communicator->setup();
+        _communicator->run();
     }
 
     void BaseStation::doRun()
@@ -62,6 +63,7 @@ namespace System
 
     void BaseStation::doStop()
     {
+        _communicator->stop();
         _running = false;
     }
 
@@ -75,7 +77,7 @@ namespace System
 
         // Increment the node count for each new node
         char nodeId = NODE_ID_START + _nodeCount++;
-        std::string ipAddr = std::to_string(hello->address.ip1) + std::to_string(hello->address.ip2) + std::to_string(hello->address.ip3) + std::to_string(hello->address.ip4);
+        std::string ipAddr = std::to_string(hello->address.ip1) + "." + std::to_string(hello->address.ip2) + "." + std::to_string(hello->address.ip3) + "." + std::to_string(hello->address.ip4);
 
         // Mark this node down as an agent or a controller
         if(hello->node_type == NodeType::NODE_TYPE_AGENT)
@@ -96,6 +98,8 @@ namespace System
         }
         else
         {
+            std::cout << "NACKing a welcome, invalid NODE_TYPE" << std::endl;
+
             // INVALID NODE TYPE, RESPOND WITH NACK
             _communicator->sendAck(nodeId, hello->header.message_id, hello->header.timestamp, false, ipAddr, hello->listeningPort);
             return;
@@ -104,6 +108,7 @@ namespace System
         // OTHERWISE, if we do not return due to an erroneous type above, lets send a WELCOME message
 
         // Send the welcome, join to network
+        std::cout << "Joining " << ipAddr << ":" << hello->listeningPort << " to the network as a " << (int) hello->node_type << " with ID " << (int) nodeId << std::endl;
         _communicator->sendWelcome(ipAddr, hello->listeningPort, nodeId);
     }
 
