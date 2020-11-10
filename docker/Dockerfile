@@ -24,6 +24,24 @@ RUN apt update && apt install curl git python3-pip idle3 -y && \
 
 RUN apt install -y castxml
 
+RUN apt update && apt install -y  --fix-missing \
+    software-properties-common \
+    autoconf \
+    automake \
+    autotools-dev \
+    ca-certificates \
+    clang-format \
+    colordiff \
+    doxygen \
+    libcurl4-openssl-dev \
+    libltdl-dev \
+    libtinyxml2-dev \
+    libtool \
+    ruby-dev \
+    libz-dev \
+    golang-go \
+    sudo
+
 # delete cache and tmp files
 RUN apt clean && \
   apt autoclean && \
@@ -32,9 +50,14 @@ RUN apt clean && \
   rm -rf /var/tmp/* && \
   rm -rf /var/lib/apt/lists/*
 
+RUN gem install --no-ri --no-rdoc fpm;
+
+# ADD /sudoers.txt /etc/sudoers
 
 # Create a user
 RUN useradd -ms /bin/bash user && echo "user:pass" | chpasswd
+RUN chmod 440 /etc/sudoers
+RUN  adduser user sudo
 USER user
 WORKDIR /home/user
 

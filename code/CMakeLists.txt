@@ -3,7 +3,11 @@ project(HoverGames2)
 
 set(CMAKE_CXX_STANDARD 14)
 
+# Enable strict handling of warnings
+add_definitions("-Wall -Wextra -Werror")
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread/threadPool/)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/mavsdk/)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
@@ -35,4 +39,7 @@ add_executable(
 
 TARGET_LINK_LIBRARIES( HoverGames2
         pthread
+        mavsdk          #All apps link against mavsdk library
+        mavsdk_action      # If action plugin used by app ...
+        mavsdk_telemetry   #If telemetry plugin used by app ...
         )
