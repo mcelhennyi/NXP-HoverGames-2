@@ -169,7 +169,7 @@ class Message:
             self._header_tuple = (message_id, source_id, target_id, int(time.time() * 1000))
         else:
             # pull off the header
-            self._header_tuple = struct.unpack(header, raw_bytes)
+            self._header_tuple = struct.unpack(header, bytearray(raw_bytes[:struct.calcsize(header)]))
 
         # Keep the raw bites
         self._raw_bytes = raw_bytes
@@ -192,13 +192,19 @@ class Message:
         )
 
     def unpack(self, fmt):
-        return struct.unpack_from(fmt, self._raw_bytes, struct.calcsize(header))  # TODO might need +1
+        return struct.unpack_from(fmt, bytearray(self._raw_bytes), struct.calcsize(header))  # TODO might need +1
 
     def get_message_id(self):
         return self._header_tuple[0]
 
     def get_source_id(self):
         return self._header_tuple[1]
+
+    def get_target_id(self):
+        return self._header_tuple[2]
+
+    def get_message_timestamp(self):
+        return self._welcome_tuple[3]
 
 
 if __name__ == '__main__':

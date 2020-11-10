@@ -237,10 +237,10 @@ namespace Messaging
     void Communicator::sendMessage(CommDetails &commDetails, char *message, int length)
     {
         struct sockaddr_in servaddr{};
+        memset(&servaddr, 0, sizeof(servaddr));
+        servaddr.sin_family    = AF_INET; // IPv4
         servaddr.sin_addr.s_addr = inet_addr(commDetails.ipAddr.c_str());
-        servaddr.sin_port = 12345;
-
-        auto dat = sizeof(sockaddr_in);
+        servaddr.sin_port = htons(commDetails.port);
 
         int ret = sendto(
                 _sockfdSend,

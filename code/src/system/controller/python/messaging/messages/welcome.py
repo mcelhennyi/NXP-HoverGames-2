@@ -10,11 +10,5 @@ class WelcomeMessage(Message):
         # Parse this message
         self._welcome_tuple = self.unpack(welcome)
 
-    def get_message_timestamp(self):
-        return self._welcome_tuple[0]
-
-    def get_message_id(self):
-        return self._welcome_tuple[1]
-
-    def get_ack_bool(self):
-        return self._welcome_tuple[2]
+    def get_node_id(self):
+        return self._header_tuple[0]
