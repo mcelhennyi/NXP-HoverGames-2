@@ -12,8 +12,8 @@ from src.system.controller.python.messaging.messages import *
 
 
 class Subject:
-    def __init__(self, id_, owner_id, location_tuple, target_tuple):
-        self._id = id_
+    def __init__(self, owner_id, location_tuple, target_tuple):
+        self._id = 0
         self._owner_id = owner_id
 
         self._x_location = 0
@@ -39,6 +39,10 @@ class Subject:
         self._owner_id = owner_id
 
         return did_change
+
+    def set_id(self, id_):
+        # This is assigned by the interface, not the user!
+        self._id = id_
 
     def get_location(self):
         return self._x_location, self._y_location, self._z_location
@@ -159,6 +163,7 @@ class ControllerInterface:
         new_subject_id = max(current_ids)
 
         # Create a new subject
+        subject.set_id(new_subject_id)
         self._subjects[new_subject_id] = subject
 
         return new_subject_id
