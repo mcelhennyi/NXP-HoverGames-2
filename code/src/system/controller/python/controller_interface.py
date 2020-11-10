@@ -1,6 +1,9 @@
 import socket
 import threading
 
+from collections.abc import Callable
+from typing import Dict, List
+
 from src.system.controller.python.messaging.parser import decode_message
 from src.system.controller.python.messaging.messages.hello import HelloMessage
 from src.system.controller.python.messaging.messages.welcome import WelcomeMessage
@@ -8,7 +11,7 @@ from src.system.controller.python.messaging.messages.agent_location import Agent
 from src.system.controller.python.messaging.messages import *
 
 
-class Agent:
+class Subject:
     def __init__(self, id_, owner_id, location_tuple, target_tuple):
         self._id = id_
         self._owner_id = owner_id
@@ -37,14 +40,33 @@ class Agent:
 
         return did_change
 
+    def get_location(self):
+        return self._x_location, self._y_location, self._z_location
+
+    def get_destination(self):
+        return self._x_target_location, self._y_target_location, self._z_target_location
+
+    def get_owner(self):
+        return self._owner_id
+
+
+class Agent(Subject):
+    def __init__(self, id_, owner_id, location_tuple, target_tuple):
+        Subject.__init__(self, id_, owner_id, location_tuple, target_tuple)
+
+
+AgentDict = Dict[Agent]
+AgentList = List[Agent]
+SubjectDict = Dict[Subject]
+
 
 class ControllerInterface:
 
     def __init__(self, base_ip_address="127.0.0.1", base_port=12345, my_ip_address="127.0.0.1", listening_port=12346):
         # Setup all data this interface needs to own
-        self.agents = dict()  # Of type id:Agent
-        self.subjects = dict()
-        self.my_agents = list()  # list of IDs that can be used to query into above agents dict
+        self._agents = dict()  # Of type id:Agent
+        self._subjects = dict()
+        self._my_agents = list()  # list of IDs that can be used to query into above agents dict
 
         self._my_id = None
         self._base_station_id = None
@@ -87,7 +109,7 @@ class ControllerInterface:
         self._running = False
         self._listen_thread.join()
 
-    def register_new_agent_location_callback(self, callback):
+    def register_new_agent_location_callback(self, callback: Callable[Agent]):
         """
         The callback will be called when a new agent location is received.
 
@@ -96,17 +118,17 @@ class ControllerInterface:
         """
         self._new_agent_location_callback = callback
 
-    def register_new_subject_location_callback(self, callback):
-        """
-        This callback will be called when a new subject location update occurs.
+    # def register_new_subject_location_callback(self, callback: Callable[Subject]):
+    #     """
+    #     This callback will be called when a new subject location update occurs.
+    #
+    #     :param callback:
+    #     :return:
+    #     """
+    #     # TODO - removed for now since the user of this class will be the single source of subjects - for now.
+    #     pass
 
-        :param callback:
-        :return:
-        """
-        # TODO
-        pass
-
-    def register_ownership_change_callback(self, callback):
+    def register_ownership_change_callback(self, callback: Callable[Agent]):
         """
         This callback will be called when ownership of an agent changes.
 
@@ -114,6 +136,32 @@ class ControllerInterface:
         :return:
         """
         self._ownership_change_callback = callback
+
+    def get_agents(self) -> AgentDict:
+        return self._agents
+
+    def get_my_agents(self) -> AgentList:
+        return self._my_agents
+
+    def get_subjects(self) -> SubjectDict:
+        return self._subjects
+
+    def add_new_subject(self, subject: Subject):
+        # Create a new subject ID
+        # TODO: This needs to be either namespaced or more random in the multibase case. Currently with one base we
+        #  will just increment.
+
+        # Current ids in a list, so we can make a new id
+        current_ids = [old_id for old_id in self._subjects.keys()]
+
+        # iterate over list and find the largest
+        current_ids.sort()
+        new_subject_id = max(current_ids)
+
+        # Create a new subject
+        self._subjects[new_subject_id] = subject
+
+        return new_subject_id
 
     def _connect_to_base(self):
         # Connect to base
@@ -127,14 +175,12 @@ class ControllerInterface:
             )
             self._sock.sendto(hello_msg.get_bytes(), (self._base_address, self._base_port))
             time.sleep(1)
-        print("Connected!")
+        print("Connected! Given ID: " + str(self._my_id))
 
     def _listener(self):
         print("Listening on port " + str(self._port) + " for messages.")
         while self._running:
-            print("waiting on message")
             data, address = self._sock.recvfrom(1024)
-            print("REceived message")
 
             # Parse for a Message
             message = self._on_new_message(data)
@@ -146,37 +192,35 @@ class ControllerInterface:
     def _on_new_message(self, msg_bytes):
         return decode_message(msg_bytes)
 
-    def _handle_message(self, message):
+    def _handle_message(self, message: Message):
         if message.get_message_id() == MESSAGE_WELCOME:
-            print("MESSAGE_WELCOME RECEIVED")
             self._handle_welcome(message)
         elif message.get_message_id() == MESSAGE_AGENT_LOCATION:
-            print("MESSAGE_AGENT_LOCATION RECEIVED")
             self._handle_agent_location(message)
         else:
             print("Ignoring message with ID, " + str(message.get_message_id()) + ", for now.")
 
-    def _handle_welcome(self, message):
+    def _handle_welcome(self, message: WelcomeMessage):
         # We mark down our ID and the base station ID
         # assert isinstance(message, WelcomeMessage)
         self._my_id = message.get_node_id()
         self._base_station_id = message.get_source_id()
 
-    def _handle_agent_location(self, message):
+    def _handle_agent_location(self, message: Message):
         assert isinstance(message, AgentLocation)
 
         agent = None
         ownership_change = False
 
         # Mark this agents location
-        if message.get_agent_id() in self.agents:
+        if message.get_agent_id() in self._agents:
             # Old agent, update it
-            ownership_change = self.agents[message.get_agent_id()].update(
+            ownership_change = self._agents[message.get_agent_id()].update(
                 message.get_owner_id(),
                 message.get_current_location(),
                 message.get_target_location()
             )
-            agent = self.agents[message.get_agent_id()]
+            agent = self._agents[message.get_agent_id()]
 
         else:
             # Create a new entry, notify the callbacks
@@ -186,19 +230,19 @@ class ControllerInterface:
                 message.get_current_location(),
                 message.get_target_location()
             )
-            self.agents[message.get_agent_id()] = agent
+            self._agents[message.get_agent_id()] = agent
             ownership_change = True  # Always when its new
 
         # Update the my_agents list
         if message.get_owner_id() == self._my_id:
-            if message.get_agent_id() not in self.my_agents:
+            if message.get_agent_id() not in self._my_agents:
                 # if we do not have the agent in my agents, add it
-                self.my_agents.append(message.get_agent_id())
+                self._my_agents.append(message.get_agent_id())
         else:
             # We dont own it, make sure ownership isnt in our list
-            if message.get_agent_id() in self.my_agents:
+            if message.get_agent_id() in self._my_agents:
                 # Its in here, lets remove it
-                self.my_agents.remove(message.get_agent_id())
+                self._my_agents.remove(message.get_agent_id())
 
         # Notify the callback
         if self._new_agent_location_callback is not None:
