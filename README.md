@@ -5,7 +5,7 @@
 **NXP HoverGames Challenge 2: Help Drones, Help Others During Pandemics with NXP**
 
 ## Authors
-[Ian McElhenny](https://www.linkedin.com/in/ian-mcelhenny-0a51858b/)  
+[Ian McElhenny](https://www.linkedin.com/in/ian-mcelhenny)  
 [Adam Berlier](https://www.linkedin.com/in/ajberlier/)
 
 ## Our goal
