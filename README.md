@@ -15,7 +15,7 @@ Wild animals destroy property, kill/infect livestock, as well as harm agricultur
 See it [here](https://www.hackster.io/contests/hovergames2/hardware_applications/12777)!
 
 ## Whats in this repo?
-In this repo you will find our C++ code for our drone and our ground station.
+In this repo you will find our C++ code for our drone and our ground station as well as a python interface for our ML code developed by Adam.
 
 ## How does our software work?
 Our system has three first class citizens:  
