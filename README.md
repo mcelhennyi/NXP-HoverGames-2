@@ -15,7 +15,7 @@ Wild animals destroy property, kill/infect livestock, as well as harm agricultur
 See it [here](https://www.hackster.io/contests/hovergames2/hardware_applications/12777)!
 
 ## Whats in this repo?
-In this repo you will find our C++ code for our drone and our ground station.
+In this repo you will find our C++ code for our drone and our ground station as well as a python interface for our ML code developed by Adam.
 
 ## How does our software work?
 Our system has three first class citizens:  
@@ -32,7 +32,7 @@ There can be many `agents`, and many `controllers`, however there is only one ce
 The RL algorithm and the animal classifier/tracker run on the `controller` node. As the classifier neural network detects `subjects` (using humans as a stand in for testing) it fills the RL scene with `subjects`. Additionally a `controller` can share its `subjects` with other `controllers` by sending a message to the `base station`. Meanwhile the drone is constantly broadcasting its location to the various controllers by way of the `base station`. The RL algorithm runs over the scene, processing the locations of the `subjects` and the `agents` to optimize the commanded position of the `agents` it owns. The `base station` then generates a target location for the `agent` and the `agent` then takes off and flys to that location. As the `agent` travels to the location our RL algorithm constantly tracks the `subjects` and the `agent` which enables the algorithm to change instructions on the fly. Then as the `agent` approaches the `subjects` they are scared away and out of the keep out zone. Once the `subject` of interest has left the keep out zone the `agent` lands back in its starting position and awaits new instructions.
 
 ## Related Repositories
-[Here](https://github.com/ajberlier/SCAREcrow) you can find our RL + Neural Network related code for:  
+[Here](https://github.com/ajberlier/gym-scarecrow) you can find our RL + Neural Network related code for:  
 1) Detecting animals and  
 2) Directing agents (drones) to herd the detected animals.
 
