@@ -5,19 +5,19 @@
 #ifndef HOVERGAMES2_COMMUNICATOR_H
 #define HOVERGAMES2_COMMUNICATOR_H
 
-#include "../utils/thread/threadPool/includes/static_pool.hpp"
-#include "../utils/time.h"
+#include <utils/thread/thread_pool/includes/static_pool.hpp>
+#include <utils/util_time.h>
 
-#include "../system/Runnable.h"
+#include <system/Runnable.h>
 
-#include "messages/common/hello.h"
-#include "messages/common/welcome.h"
-#include "messages/common/ack.h"
+#include <messaging/messages/common/hello.h>
+#include <messaging/messages//common/welcome.h>
+#include <messaging/messages//common/ack.h>
 
-#include "messages/agent/agentLocation.h"
+#include <messaging/messages//agent/agentLocation.h>
 
-#include "messages/controller/agentMoveCommand.h"
-#include "messages/controller/subjectLocation.h"
+#include <messaging/messages//controller/agentMoveCommand.h>
+#include <messaging/messages//controller/subjectLocation.h>
 
 #include <stdio.h>
 #include <stdlib.h>

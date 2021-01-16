@@ -2,8 +2,8 @@
 // Created by user on 10/17/20.
 //
 
-#ifndef HOVERGAMES2_TIME_H
-#define HOVERGAMES2_TIME_H
+#ifndef HOVERGAMES2_UTIL_TIME_H
+#define HOVERGAMES2_UTIL_TIME_H
 
 #include <chrono>
 
@@ -18,4 +18,4 @@ namespace Utils
     }
 }
 
-#endif //HOVERGAMES2_TIME_H
+#endif //HOVERGAMES2_UTIL_TIME_H

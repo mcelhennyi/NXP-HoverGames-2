@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "../utils/time.h"
+#include "../utils/util_time.h"
 
 class Runnable
 {
@@ -19,7 +19,7 @@ public:
     {
 
     };
-    ~Runnable()
+    virtual ~Runnable()
     {
         if(_running)
         {

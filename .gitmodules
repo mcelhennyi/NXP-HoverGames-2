@@ -1,6 +1,6 @@
-[submodule "CPP/HoverGames2/src/utils/thread/threadPool"]
-	path = CPP/HoverGames2/src/utils/thread/threadPool
-	url = https://github.com/ganler/thread_pools.git
 [submodule "code/src/utils/mavsdk"]
 	path = code/src/utils/mavsdk
 	url = https://github.com/mavlink/MAVSDK.git
+[submodule "code/src/utils/thread/thread_pool"]
+	path = code/src/utils/thread/thread_pool
+	url = https://github.com/mcelhennyi/thread_pools.git
