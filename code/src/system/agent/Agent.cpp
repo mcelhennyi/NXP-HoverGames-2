@@ -76,15 +76,28 @@ namespace System
         _action = std::make_shared<Action>(_system);
 
         // Subscribe to telemetry mesages
+        _telemetry->set_rate_position(40);
         _telemetry->subscribe_position_velocity_ned(
             std::bind(&Agent::onNewPosition, this, std::placeholders::_1)
         );
-        _telemetry->subscribe_armed([&](bool armed){
-            _armed = armed;
-        });
+
+        _telemetry->set_rate_landed_state(10);
         _telemetry->subscribe_landed_state([&](Telemetry::LandedState landedState){
             std::unique_lock<std::mutex> lock(_droneStateMutex);
             _droneState = landedState;
+
+            std::cout << "Drone is in LandedState: " <<
+                (_droneState == Telemetry::LandedState::TakingOff ? "TakingOff" :
+                    _droneState == Telemetry::LandedState::InAir ? "InAir" :
+                    _droneState == Telemetry::LandedState::Landing ? "Landing" :
+                    _droneState == Telemetry::LandedState::OnGround ? "OnGround" :
+                    _droneState == Telemetry::LandedState::Unknown ? "Unknown" : "") << std::endl;
+
+        });
+
+        _telemetry->subscribe_armed([&](bool armed){
+            _armed = armed;
+            std::cout << "Drone is " << (armed ? "Armed": "Disarmed") << std::endl;
         });
 
     }
@@ -92,6 +105,10 @@ namespace System
     void Agent::doRun()
     {
         // This function loops at a rate of 10 hz
+
+        // Aquire locks
+        std::unique_lock<std::mutex> agentStateLock(_agentStateMutex);
+        std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
 
         // Check for an expiration
         auto timeNow = Utils::Time::microsNow();
@@ -106,13 +123,14 @@ namespace System
             _staleTarget = false;
         }
 
-        std::unique_lock<std::mutex> agentStateLock(_agentStateMutex);
-        std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
         AgentStateEnum nextState = AgentStateEnum::WAIT;
         switch (_agentState)
         {
             case WAIT:
             {
+                // Lock and wait for a non stale target
+                _agentStateCV.wait(agentStateLock, [&](){ return !(_staleTarget.load()); });
+
                 // The target is not stale, lets go after it (takeoff first)
                 if (!_staleTarget)
                 {
@@ -271,7 +289,38 @@ namespace System
 
     void Agent::doStop()
     {
-
+        std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
+        while(_droneState != Telemetry::LandedState::OnGround)
+        {
+            if(_droneState == Telemetry::LandedState::InAir)
+            {
+                // Send land command
+                auto result = _action->land();
+                if(result != Action::Result::Success)
+                {
+                    std::cout << "Error: Failed to command a land, result: " << result << std::endl;
+                }
+            }
+            else if(_droneState == Telemetry::LandedState::Landing)
+            {
+                // Wait for landed
+            }
+            else if(_droneState == Telemetry::LandedState::OnGround)
+            {
+                // Now disarm and wait
+                auto result = _action->disarm();
+                if(result != Action::Result::Success)
+                {
+                    std::cout << "Error: Failed to command a disarm, result: " << result << std::endl;
+                }
+                else
+                {
+                    // We are safe and can stop.
+                }
+                break;
+            }
+            usleep(1000000 / 10); // roughly 10hz
+        }
     }
 
 
@@ -296,7 +345,7 @@ namespace System
         _currentPosition.y = posvel.position.east_m;
         _currentPosition.z = posvel.position.down_m;
 
-        std::cout << "Altitude: " << posvel.position.down_m << " m" << std::endl;
+        // std::cout << "Altitude: " << posvel.position.down_m << " m" << std::endl;
     }
     // End MavSDK callbacks
 
@@ -313,7 +362,9 @@ namespace System
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
 
         // Mark this as NOT stale
+        std::lock_guard<std::mutex> actionStateLock(_agentStateMutex);
         _staleTarget = false;
+        _agentStateCV.notify_all();
 
     }
     // End Messaging Callbacks
