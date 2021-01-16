@@ -24,11 +24,28 @@ namespace System
 
     void Agent::doSetup()
     {
+        std::mutex              connectedToBaseMutex;
+        std::atomic_bool        connectedToBase(false);
+        std::condition_variable connectedToBaseCv;
+
         // First setup our internal comms
-        _communicator->registerCallback(
-                Messaging::Messages::Common::MessageID::MESSAGE_AGENT_MOVE_COMMAND,
-                [&](char * msg) { onAgentMoveCommand(msg); }
-        );
+        _communicator->registerCallback(Messaging::Messages::Common::MessageID::MESSAGE_AGENT_MOVE_COMMAND, [&](char * msg) {
+            onAgentMoveCommand(msg);
+        });
+        _communicator->registerCallback(Messaging::Messages::Common::MessageID::MESSAGE_WELCOME, [&](char * msg) {
+            // Trigger below to continue on
+            std::lock_guard<std::mutex> baseConnectionLock(connectedToBaseMutex);
+            connectedToBase = true;
+            connectedToBaseCv.notify_all();
+        });
+
+        // Send a hello
+        _communicator->sendHello();
+
+        // Wait for connection
+        // TODO: Add a timeout with a stop() call
+        std::unique_lock<std::mutex> baseConnectionLock(connectedToBaseMutex);
+        connectedToBaseCv.wait(baseConnectionLock, [&](){ return connectedToBase.load(); });
 
         // Now Setup the MAVSDK connections
         bool discoveredSystem = false;
@@ -344,8 +361,6 @@ namespace System
         _currentPosition.x = posvel.position.north_m;
         _currentPosition.y = posvel.position.east_m;
         _currentPosition.z = posvel.position.down_m;
-
-        // std::cout << "Altitude: " << posvel.position.down_m << " m" << std::endl;
     }
     // End MavSDK callbacks
 

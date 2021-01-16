@@ -16,7 +16,7 @@ namespace Messaging
     class BaseStationCommunicator: public Communicator
     {
     public:
-        BaseStationCommunicator(char id): Communicator(id) {};
+        BaseStationCommunicator(unsigned char myId): Communicator("0.0.0.0", 12345, myId) {};
         ~BaseStationCommunicator() {};
 
     public:

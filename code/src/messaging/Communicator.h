@@ -36,7 +36,6 @@ using namespace Messaging::Messages::Agent;
 using namespace Messaging::Messages::Controller;
 
 #define CALLBACK_HANDLER_THREAD_COUNT 10  // note work is done in these threads, so we may need more.
-#define PORT        12345
 #define MAXLINE     1024
 
 namespace Messaging
@@ -44,7 +43,7 @@ namespace Messaging
     class Communicator: public Runnable
     {
     public:
-        Communicator(char myId);
+        Communicator(std::string baseIp="0.0.0.0", int port=12345, unsigned char myId=0);
         ~Communicator();
 
         //void setId(char id) { _myId = id; };
@@ -62,7 +61,7 @@ namespace Messaging
         struct CommDetails
         {
             CommDetails(){};
-            CommDetails(std::string &ipAddr_, int port_): ipAddr(ipAddr_), port(port_) {};
+            CommDetails(std::string ipAddr_, int port_): ipAddr(ipAddr_), port(port_) {};
             std::string ipAddr;
             int port;
         };
@@ -72,8 +71,11 @@ namespace Messaging
         void doStop() override;
 
         // PREPARE
-        void fillHeader(char targetId, MessageID messageIdEnum, Header *header);
+        void fillHeader(unsigned char targetId, MessageID messageIdEnum, Header *header);
         void sendMessage(CommDetails &commDetails, char* message, int length);
+
+        // Addr port conversions
+        sockaddr_in convertToCStruct(CommDetails& commDetails);
 
     private:
 
@@ -83,22 +85,23 @@ namespace Messaging
         void callbackWrapper(std::function<void(char*)> func, char* buffer);
 
     protected:
+        // Receiver stuff
+        CommDetails                                         _listenDetails;
+        int                                                 _sockfdReceive;
+        int                                                 _sockfdSend;
+        char                                                _buffer[MAXLINE];
+
         // Track the node locations
         std::map<unsigned char, CommDetails>                _nodes;
 
         // Track our ID for message header use
-        char                                                _myId;
+        unsigned char                                       _myId;
 
         // Use a thread pool for call back handling
         thread_pool::static_pool                            _threadPool;
 
         // Registration of callbacks - msg_id:callback
         std::map<unsigned char, std::function<void(char*)>> _callbacks;
-
-        // Receiver stuff
-        int                                                 _sockfdReceive;
-        int                                                 _sockfdSend;
-        char                                                _buffer[MAXLINE];
 
     };
 }

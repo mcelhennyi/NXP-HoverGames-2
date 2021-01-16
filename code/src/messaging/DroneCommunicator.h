@@ -11,6 +11,15 @@ namespace Messaging
 {
     class DroneCommunicator: public Communicator
     {
+    public:
+        DroneCommunicator();
+        ~DroneCommunicator() {};
+
+    public:
+        void sendHello();
+
+    protected:
+        CommDetails _baseStationListen;
 
     };
 }

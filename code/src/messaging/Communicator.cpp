@@ -6,9 +6,12 @@
 
 namespace Messaging
 {
-    Communicator::Communicator(char myId): Runnable(20.0f), _sockfdReceive(-1), _sockfdSend(-1), _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT)
-    {
 
+    Communicator::Communicator(std::string baseIp, int port, unsigned char myId): Runnable(20.0f), _sockfdReceive(-1),
+    _sockfdSend(-1), _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT)
+    {
+        _listenDetails.ipAddr = baseIp; // Listen on all interfaces
+        _listenDetails.port = port; // Our listen port
     }
 
     Communicator::~Communicator()
@@ -45,13 +48,15 @@ namespace Messaging
         memset(&servaddrReceive, 0, sizeof(servaddrReceive));
 
         // Filling server information
-        servaddrReceive.sin_family    = AF_INET; // IPv4
-        servaddrReceive.sin_addr.s_addr = INADDR_ANY;
-        servaddrReceive.sin_port = htons(PORT);
 
-        servaddrSend.sin_family    = AF_INET; // IPv4
-        servaddrSend.sin_addr.s_addr = INADDR_ANY;
-        servaddrSend.sin_port = htons(PORT-1);
+        // Setup for receiving port
+        servaddrReceive = convertToCStruct(_listenDetails);
+
+        // Setup for sending port
+        CommDetails temp;
+        temp = _listenDetails;
+        temp.port = temp.port - 1;
+        servaddrSend = convertToCStruct(temp);
 
         struct timeval read_timeout;
         read_timeout.tv_sec = 0;
@@ -89,6 +94,24 @@ namespace Messaging
             if (header->message_id == MessageID::MESSAGE_HELLO)
             {
                 auto callback = _callbacks.find(MessageID::MESSAGE_HELLO);
+                if (callback != _callbacks.end())
+                {
+                    // Call the callback with the received message
+                    auto copied = new char[length];
+                    memcpy(copied, _buffer, length);
+                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                }
+            }
+            else if (header->message_id == MessageID::MESSAGE_WELCOME)
+            {
+                // Cast Message
+                auto welcome = (Welcome*) _buffer;
+
+                // SAve off our ID
+                _myId = welcome->node_id;
+
+                // Call callback
+                auto callback = _callbacks.find(MessageID::MESSAGE_WELCOME);
                 if (callback != _callbacks.end())
                 {
                     // Call the callback with the received message
@@ -162,7 +185,7 @@ namespace Messaging
         }
     }
 
-    void Communicator::fillHeader(char targetId, MessageID messageIdEnum, Header *header)
+    void Communicator::fillHeader(unsigned char targetId, MessageID messageIdEnum, Header *header)
     {
         header->message_id = messageIdEnum;
         header->target_id = targetId;
@@ -239,12 +262,7 @@ namespace Messaging
 
     void Communicator::sendMessage(CommDetails &commDetails, char *message, int length)
     {
-        struct sockaddr_in servaddr{};
-        memset(&servaddr, 0, sizeof(servaddr));
-        servaddr.sin_family    = AF_INET; // IPv4
-        servaddr.sin_addr.s_addr = inet_addr(commDetails.ipAddr.c_str());
-        servaddr.sin_port = htons(commDetails.port);
-
+        struct sockaddr_in servaddr = convertToCStruct(commDetails);
         int ret = sendto(
                 _sockfdSend,
                 (const char *)message,
@@ -255,6 +273,16 @@ namespace Messaging
         );
         if(ret < 0)
             std::cout << "Error sending message " << (int)((Header*)message)->message_id << std::endl;
+    }
+
+    sockaddr_in Communicator::convertToCStruct(Communicator::CommDetails &commDetails)
+    {
+        struct sockaddr_in servaddr{};
+        memset(&servaddr, 0, sizeof(servaddr));
+        servaddr.sin_family    = AF_INET; // IPv4
+        servaddr.sin_addr.s_addr = inet_addr(commDetails.ipAddr.c_str());
+        servaddr.sin_port = htons(commDetails.port);
+        return servaddr;
     }
 
 }
