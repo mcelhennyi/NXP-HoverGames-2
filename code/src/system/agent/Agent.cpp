@@ -7,12 +7,12 @@
 #include <messaging/messages/agent/agentLocation.h>
 
 #define CONNECTION_URL "127.0.0.1:5760"
-
+#define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
 #define SET_POINT_TIMEOUT (uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 
 namespace System
 {
-    Agent::Agent(): Runnable(10), _targetThread(std::bind(&Agent::monitorPosition, this), 10), _flyToTarget(false), _lastTargetTime(false), _currentState(AgentStateEnum::WAIT)
+    Agent::Agent(): Runnable(10), _flyToTarget(false), _lastTargetTime(false), _currentState(AgentStateEnum::WAIT)
     {
 
     }
@@ -76,41 +76,20 @@ namespace System
         _action = std::make_shared<Action>(_system);
 
         // Subscribe to telemetry mesages
-        _telemetry->subscribe_position(
+        _telemetry->subscribe_position_velocity_ned(
             std::bind(&Agent::onNewPosition, this, std::placeholders::_1)
         );
-
+        _telemetry->subscribe_armed([&](bool armed){
+            _armed = armed;
+        });
+        _telemetry->subscribe_landed_state([&](Telemetry::LandedState landedState){
+            std::unique_lock<std::mutex> lock(_droneStateMutex);
+            _droneState = landedState;
+        });
 
     }
 
     void Agent::doRun()
-    {
-        switch (_currentState)
-        {
-            case WAIT:
-
-                break;
-            case TAKEOFF:
-
-                break;
-            case TARGETING_MODE:
-
-                break;
-            case RETURN_TO_LAUNCH:
-
-                break;
-            case LAND:
-
-                break;
-        }
-    }
-
-    void Agent::doStop()
-    {
-
-    }
-
-    void Agent::monitorPosition()
     {
         // This function loops at a rate of 10 hz
 
@@ -118,10 +97,70 @@ namespace System
         auto timeNow = Utils::Time::microsNow();
         if(timeNow - _newTargetReceivedTimeUs > SET_POINT_TIMEOUT)
         {
-            // We have timed out (the time between now and the last message is too great
-            
+            // We have timed out (the time between now and the last message is too great)
+            std::cout << "AgentMoveCommand expired, too much time since last message." << std::endl;
+            _staleTarget = true;
+        }
+        else
+        {
+            _staleTarget = false;
         }
 
+        std::unique_lock<std::mutex> stateLock(_stateMutex);
+        AgentStateEnum nextState = AgentStateEnum::WAIT;
+        switch (_currentState)
+        {
+            case WAIT:
+                // The target is not stale, lets go after it (takeoff first)
+                if(!_staleTarget)
+                {
+                    if(_droneState == Telemetry::LandedState::OnGround)
+                    {
+                        nextState = AgentStateEnum::TAKEOFF;
+                        _homeLocationGround = _currentPosition; // Assumed on the ground
+                        _homeLocationAir = _homeLocationGround;
+                        _homeLocationAir.z = SAFE_ALTITUDE;
+                    }
+                    else
+                    {
+                        std::cout << "ERROR: Drone not on the ground, cannot move from WAIT to TAKEOFF" << std::endl;
+                    }
+                }
+                break;
+
+            case TAKEOFF:
+                // Check the position, we want to be at our takeoff location (some height above the ground point)
+                if(atPosition())
+                nextState = AgentStateEnum::TAKEOFF;
+                break;
+
+            case TARGETING_MODE:
+                // Do nothing, this is where we want to be
+                // TODO: Send the command for the target location to the autopilot
+                break;
+
+            case RETURN_TO_LAUNCH:
+                // TODO: Monitor position till we are near launch, then land.
+//                _currentState = AgentStateEnum::LAND;
+                break;
+
+            case LAND:
+                // TODO: Monitor our position/state until we are landed then move to WAIT
+                break;
+        }
+
+        _currentState = nextState;
+    }
+
+    void Agent::doStop()
+    {
+
+    }
+
+
+    bool Agent::atPosition(Location target, Location current)
+    {
+        return false;
     }
 
     // MavSDK callbacks
@@ -130,9 +169,14 @@ namespace System
         std::cout << "Discovered a component with type " << unsigned(component_type) << std::endl;
     }
 
-    void Agent::onNewPosition(Telemetry::Position position)
+    void Agent::onNewPosition(Telemetry::PositionVelocityNed posvel)
     {
-        std::cout << "Altitude: " << position.relative_altitude_m << " m" << std::endl;
+        std::unique_lock<std::mutex> lock(_currentPositionMutex);
+        _currentPosition.x = posvel.position.north_m;
+        _currentPosition.y = posvel.position.east_m;
+        _currentPosition.z = posvel.position.down_m;
+
+        std::cout << "Altitude: " << posvel.position.down_m << " m" << std::endl;
     }
     // End MavSDK callbacks
 
@@ -147,6 +191,9 @@ namespace System
         // copy to our class var (this gets deleted once this callback is over)
         _newTargetReceivedTimeUs = Utils::Time::microsNow();
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
+
+        // Mark this as NOT stale
+        _staleTarget = false;
 
     }
     // End Messaging Callbacks

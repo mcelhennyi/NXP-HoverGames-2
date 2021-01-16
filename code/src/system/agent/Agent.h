@@ -46,7 +46,7 @@ namespace System
 
     protected:
         // Position monitoring thread
-        void monitorPosition();
+        bool atPosition(Location target, Location current);
 
         // MAVSDK callbacks
 
@@ -54,7 +54,7 @@ namespace System
         void componentDiscovered(ComponentType component_type);
 
         /// @brief Called when the position of the drone is sent
-        void onNewPosition(Telemetry::Position position);
+        void onNewPosition(Telemetry::PositionVelocityNed posvel);
 
 
         // Messaging callbacks
@@ -70,19 +70,30 @@ namespace System
         std::shared_ptr<mavsdk::Telemetry>  _telemetry;
         std::shared_ptr<mavsdk::Action>     _action;
 
+        // Drone state
+        std::mutex                          _currentPositionMutex;
+        Location                            _currentPosition;
+        std::atomic_bool                    _armed;
+        std::mutex                          _droneStateMutex;
+        Telemetry::LandedState              _droneState;
+
         // States
         AgentStateEnum                      _currentState;
         std::mutex                          _stateMutex;
         std::condition_variable             _stateCV;
 
         // Target following
-        bool                                _flyToTarget;
+        std::atomic_bool                    _staleTarget;
         bool                                _lastTargetTime;
-        Utils::Thread::ThreadLoop           _targetThread;
         std::mutex                          _targetCommandMutex;
         uint64_t                            _newTargetReceivedTimeUs;
         AgentMoveCommand                    _newMoveCommand;
         AgentMoveCommand                    _lastMoveCommand;
+
+        // Home
+        std::mutex                          _homeLocationsMutex;
+        Location                            _homeLocationGround;
+        Location                            _homeLocationAir;
 
     };
 }
