@@ -16,6 +16,7 @@
 
 #include <plugins/action/action.h>
 #include <plugins/telemetry/telemetry.h>
+#include <plugins/offboard/offboard.h>
 #include <iostream>
 #include <thread>
 
@@ -46,7 +47,7 @@ namespace System
 
     protected:
         // Position monitoring thread
-        bool atPosition(Location target, Location current);
+        bool atPosition(Location target);
 
         // MAVSDK callbacks
 
@@ -69,6 +70,7 @@ namespace System
         std::shared_ptr<mavsdk::System>     _system;
         std::shared_ptr<mavsdk::Telemetry>  _telemetry;
         std::shared_ptr<mavsdk::Action>     _action;
+        std::shared_ptr<mavsdk::Offboard>   _offboard;
 
         // Drone state
         std::mutex                          _currentPositionMutex;
@@ -78,9 +80,9 @@ namespace System
         Telemetry::LandedState              _droneState;
 
         // States
-        AgentStateEnum                      _currentState;
-        std::mutex                          _stateMutex;
-        std::condition_variable             _stateCV;
+        AgentStateEnum                      _agentState;
+        std::mutex                          _agentStateMutex;
+        std::condition_variable             _agentStateCV;
 
         // Target following
         std::atomic_bool                    _staleTarget;

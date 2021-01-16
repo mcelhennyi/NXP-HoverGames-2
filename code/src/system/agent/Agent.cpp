@@ -12,7 +12,7 @@
 
 namespace System
 {
-    Agent::Agent(): Runnable(10), _flyToTarget(false), _lastTargetTime(false), _currentState(AgentStateEnum::WAIT)
+    Agent::Agent(): Runnable(10), _lastTargetTime(false), _agentState(AgentStateEnum::WAIT)
     {
 
     }
@@ -106,18 +106,20 @@ namespace System
             _staleTarget = false;
         }
 
-        std::unique_lock<std::mutex> stateLock(_stateMutex);
+        std::unique_lock<std::mutex> agentStateLock(_agentStateMutex);
+        std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
         AgentStateEnum nextState = AgentStateEnum::WAIT;
-        switch (_currentState)
+        switch (_agentState)
         {
             case WAIT:
+            {
                 // The target is not stale, lets go after it (takeoff first)
-                if(!_staleTarget)
+                if (!_staleTarget)
                 {
-                    if(_droneState == Telemetry::LandedState::OnGround)
+                    if (_droneState == Telemetry::LandedState::OnGround)
                     {
                         nextState = AgentStateEnum::TAKEOFF;
-                        _homeLocationGround = _currentPosition; // Assumed on the ground
+                        _homeLocationGround = _currentPosition;
                         _homeLocationAir = _homeLocationGround;
                         _homeLocationAir.z = SAFE_ALTITUDE;
                     }
@@ -127,29 +129,144 @@ namespace System
                     }
                 }
                 break;
-
+            }
             case TAKEOFF:
+            {
+                if (_droneState == Telemetry::LandedState::OnGround)
+                {
+                    // First ARM
+                    auto result = _action->arm();
+                    if (result == Action::Result::Success)
+                    {
+                        // Send takeoff command
+                        result = _action->set_takeoff_altitude(SAFE_ALTITUDE);
+                        if (result == Action::Result::Success)
+                        {
+                            result = _action->takeoff();
+                            if (result != Action::Result::Success)
+                            {
+                                std::cout << "Error: Failed to takeoff: " << result << std::endl;
+                            }
+                        }
+                        else
+                        {
+                            std::cout << "Error: Failed to set takeoff altitude: " << result << std::endl;
+                        }
+                    }
+                    else
+                    {
+                        std::cout << "Error: Failed to arm: " << result << std::endl;
+                    }
+                }
+                else if (_droneState == Telemetry::LandedState::TakingOff)
+                {
+                    // DO nothing, we are waiting
+                }
+                else if (_droneState == Telemetry::LandedState::InAir)
+                {
+                    nextState = AgentStateEnum::TARGETING_MODE;
+                }
+
                 // Check the position, we want to be at our takeoff location (some height above the ground point)
-                if(atPosition())
-                nextState = AgentStateEnum::TAKEOFF;
+                // // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
+                // if(atPosition(_homeLocationAir))
+                // {
+                //     nextState = AgentStateEnum::TARGETING_MODE;
+                // }
                 break;
-
+            }
             case TARGETING_MODE:
-                // Do nothing, this is where we want to be
-                // TODO: Send the command for the target location to the autopilot
-                break;
+            {
+                std::unique_lock<std::mutex> targetLocationLock(_targetCommandMutex);
 
+                // Send the command for the target location to the autopilot
+                Offboard::PositionNedYaw positionNedYaw;
+                positionNedYaw.north_m = _newMoveCommand.target_location.x;
+                positionNedYaw.east_m = _newMoveCommand.target_location.y;
+                positionNedYaw.down_m = SAFE_ALTITUDE;
+                positionNedYaw.yaw_deg = 0;
+                auto result = _offboard->set_position_ned(positionNedYaw);
+                if(result != Offboard::Result::Success)
+                {
+                    std::cout << "Error: Failed to change set point in RETURN_TO_LAUNCH mode, result: " << result << std::endl;
+                }
+                else
+                {
+                    result = _offboard->start();
+                    if(result != Offboard::Result::Success)
+                    {
+                        std::cout << "Error: Failed to start offboard mode: " << result << std::endl;
+                    }
+                }
+                break;
+            }
             case RETURN_TO_LAUNCH:
-                // TODO: Monitor position till we are near launch, then land.
-//                _currentState = AgentStateEnum::LAND;
-                break;
+            {
+                std::unique_lock<std::mutex> targetLocationLock(_targetCommandMutex);
 
-            case LAND:
-                // TODO: Monitor our position/state until we are landed then move to WAIT
+                // Command a return to home
+                Offboard::PositionNedYaw positionNedYaw;
+                positionNedYaw.north_m = _homeLocationAir.x;
+                positionNedYaw.east_m = _homeLocationAir.y;
+                positionNedYaw.down_m = _homeLocationAir.z;
+                positionNedYaw.yaw_deg = 0;
+                auto result = _offboard->set_position_ned(positionNedYaw);
+                if(result != Offboard::Result::Success)
+                {
+                    std::cout << "Error: Failed to change set point in RETURN_TO_LAUNCH mode, result: " << result << std::endl;
+                }
+
+                // Monitor position till we are near launch, then land.
+                if(atPosition(_homeLocationAir))
+                {
+                    // Turn off offboard mode
+                    result = _offboard->stop();
+                    if(result == Offboard::Result::Success)
+                    {
+                        _agentState = AgentStateEnum::LAND;
+                    }
+                    else
+                    {
+                        std::cout << "Error: Failed to turn off offboard mode, result: " << result << std::endl;
+                    }
+                }
                 break;
+            }
+            case LAND:
+            {
+                if(_droneState == Telemetry::LandedState::InAir)
+                {
+                    // Send land command
+                    auto result = _action->land();
+                    if(result != Action::Result::Success)
+                    {
+                        std::cout << "Error: Failed to command a land, result: " << result << std::endl;
+                    }
+                }
+                else if(_droneState == Telemetry::LandedState::Landing)
+                {
+                    // Do nothing, just wait for landed
+                }
+                else if(_droneState == Telemetry::LandedState::OnGround)
+                {
+                    // Now disarm and wait
+                    auto result = _action->disarm();
+                    if(result != Action::Result::Success)
+                    {
+                        std::cout << "Error: Failed to command a disarm, result: " << result << std::endl;
+                    }
+                    else
+                    {
+                        // Success, lets WAIT
+                        nextState = AgentStateEnum::WAIT;
+                    }
+                }
+
+                break;
+            }
         }
 
-        _currentState = nextState;
+        _agentState = nextState;
     }
 
     void Agent::doStop()
@@ -158,8 +275,11 @@ namespace System
     }
 
 
-    bool Agent::atPosition(Location target, Location current)
+    bool Agent::atPosition(Location target)
     {
+        // TODO Check if we are at the target yet.
+
+        // Delay for some time to settle, before allowing a state transition.
         return false;
     }
 
