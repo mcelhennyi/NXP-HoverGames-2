@@ -230,7 +230,10 @@ namespace Messaging
 
     void Communicator::callbackWrapper(std::function<void(char *)> func, char *buffer)
     {
+        // Call the callback
         func(buffer);
+
+        // Delete the memory after callback
         delete[] buffer;
     }
 

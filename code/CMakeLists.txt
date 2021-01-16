@@ -6,10 +6,11 @@ set(CMAKE_CXX_STANDARD 14)
 # Enable strict handling of warnings
 add_definitions("-Wall -Wextra -Werror -Wno-reorder -Wno-unused-parameter")
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread/thread_pool/)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/mavsdk/)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/thread/thread_pool)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/mavsdk)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/utils/mavsdk)
 
 add_executable(
         HoverGames2
@@ -32,10 +33,10 @@ add_executable(
         src/system/base_station/BaseStation.h
         src/system/agent/Agent.cpp
         src/system/agent/Agent.h
-        src/system/Runnable.cpp
-        src/system/Runnable.h
+        src/utils/thread/runnable/Runnable.cpp
+        src/utils/thread/runnable/Runnable.h
         src/utils/util_time.h
-)
+        src/utils/thread/runnable/ThreadLoop.h)
 
 TARGET_LINK_LIBRARIES(
     HoverGames2

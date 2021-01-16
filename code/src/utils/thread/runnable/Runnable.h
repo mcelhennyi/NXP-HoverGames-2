@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "../utils/util_time.h"
+#include "utils/util_time.h"
 
 class Runnable
 {
@@ -44,9 +44,12 @@ public:
     void stop()
     {
         _running = false;
-        _thread->join();
-        delete _thread;
-        _thread = nullptr;
+        if(_thread != nullptr)
+        {
+            _thread->join();
+            delete _thread;
+            _thread = nullptr;
+        }
         doStop();
     };
 

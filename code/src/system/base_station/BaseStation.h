@@ -9,7 +9,7 @@
 
 #include "../../messaging/BaseStationCommunicator.h"
 
-#include "../Runnable.h"
+#include "utils/thread/runnable/Runnable.h"
 
 #define BASE_ID 4
 #define NODE_ID_START 5
