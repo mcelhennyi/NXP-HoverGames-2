@@ -32,7 +32,7 @@ else
     if [ "$(docker ps -aq -f status=running -f name=$DOCKER_CONTAINER_NAME)" ]; then
         # Use the old one
         echo "Found the container already running, using this one."
-        winpty docker exec -it $DOCKER_CONTAINER_NAME bash
+        winpty docker exec --network host -it $DOCKER_CONTAINER_NAME bash
     fi
 fi
 

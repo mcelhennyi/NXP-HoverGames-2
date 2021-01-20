@@ -9,6 +9,8 @@
 #define CONNECTION_URL "127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
 #define SET_POINT_TIMEOUT (uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
+#define DISTANCE_THRESHOLD 0.2 // meters
+#define SETTLE_TIME_SECONDS 2
 
 namespace System
 {
@@ -343,7 +345,20 @@ namespace System
 
     bool Agent::atPosition(Location target)
     {
-        // TODO Check if we are at the target yet.
+        std::unique_lock<std::mutex> lock(_currentPositionMutex);
+
+        // First calculate the distance to the target
+        double d = sqrt(pow(target.x - _currentPosition.x, 2) +
+                       pow(target.y - _currentPosition.y, 2) +
+                       pow(target.z - _currentPosition.z, 2) * 1.0);
+
+        // Now compare to distance threshold
+        if(d <= DISTANCE_THRESHOLD)
+        {
+            // Lets sleep some time for settling
+            usleep(1000000 * SETTLE_TIME_SECONDS);
+            return true;
+        }
 
         // Delay for some time to settle, before allowing a state transition.
         return false;
