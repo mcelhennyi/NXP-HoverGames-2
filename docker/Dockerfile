@@ -108,6 +108,7 @@ RUN mkdir -p ~/thirdparty && \
 RUN sudo apt-get install -y net-tools
 
 EXPOSE 5000-15000
+RUN cd ~/px4 && sudo bash ./Tools/setup/ubuntu.sh
 
 # SITL setup for quad with optical flow - https://docs.px4.io/master/en/simulation/gazebo.html
 # RUN HEADLESS=1 make px4_sitl gazebo_iris_opt_flow
