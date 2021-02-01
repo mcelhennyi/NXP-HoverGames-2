@@ -168,6 +168,11 @@ class ControllerInterface:
 
         return new_subject_id
 
+    def command_agent_location(self, agent_id, location: AgentLocation):
+        pass
+
+    # -- Privates Below -- #
+
     def _connect_to_base(self):
         # Connect to base
         while self._my_id is None:
