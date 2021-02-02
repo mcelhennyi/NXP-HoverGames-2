@@ -122,7 +122,7 @@ welcome = "B"
 #
 #     Common::Location    target_location;    // The target location for the agent
 # };
-agent_move_command = "BB" + location
+agent_move_command = "Bxxxxxxx" + location
 
 # enum SubjectType
 # {

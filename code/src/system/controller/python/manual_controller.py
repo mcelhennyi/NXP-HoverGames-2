@@ -65,7 +65,11 @@ class ManualController(ControllerInterface):
 
                     # Update the struct
                     self._agent_location_command.set_id(agent_id)
-                    self._agent_location_command.update(self.get_id(), (0, 0, 0), (x, y, z))
+                    self._agent_location_command.update(
+                        0,  # Ignored by sender code - ID setting not required
+                        (0, 0, 0),  # not used (current position)
+                        (x, y, z)   # Target location
+                    )
 
                     print("Updating agent " + str(agent_id) + " location command to: X-" + str(x) + ", Y-" + str(y) +
                           ", Z-" + str(z) + ".")

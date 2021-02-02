@@ -58,7 +58,7 @@ namespace System
     void BaseStation::doRun()
     {
         // Called specified rate in constructor
-        std::cout << "RUN!" << std::endl;
+        // std::cout << "RUN!" << std::endl;
     }
 
     void BaseStation::doStop()
@@ -177,7 +177,7 @@ namespace System
         auto agentOwnerItem = _agentOwnerMap.find(agentMoveCommand->agent_id);
         if(agentOwnerItem == _agentOwnerMap.end() || agentOwnerItem->second != agentMoveCommand->header.source_id)
         {
-            std::cout << "Controller, " << agentMoveCommand->header.source_id << " does not own " << agentMoveCommand->agent_id << std::endl;
+            std::cout << "Controller, " << (int)agentMoveCommand->header.source_id << " does not own " << (int)agentMoveCommand->agent_id << std::endl;
             return;
         }
 
@@ -185,7 +185,7 @@ namespace System
         auto controller = _activeControllers.find(agentMoveCommand->header.source_id);
         if(controller != _activeControllers.end())
         {
-            std::cout << "Controller not found, " <<  agentMoveCommand->header.source_id << std::endl;
+            std::cout << "Controller not found, " <<  (int)agentMoveCommand->header.source_id << std::endl;
         }
 
         // Transform move to drone coordinates

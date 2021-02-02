@@ -7,6 +7,7 @@ from src.system.controller.python.messaging.parser import decode_message
 from src.system.controller.python.messaging.messages.hello import HelloMessage
 from src.system.controller.python.messaging.messages.welcome import WelcomeMessage
 from src.system.controller.python.messaging.messages.agent_location import AgentLocation
+from src.system.controller.python.messaging.messages.agent_move_command import AgentMoveCommand
 from src.system.controller.python.messaging.messages import *
 
 
@@ -178,7 +179,9 @@ class ControllerInterface:
         return new_subject_id
 
     def command_agent_location(self, agent: Agent):
-        al = AgentLocation(agent_id=agent.get_id(), owner_id=agent.get_owner(), commanded_location=agent.get_destination())
+        al = AgentMoveCommand(
+            agent_id=agent.get_id(), source_id=self._my_id, commanded_location=agent.get_destination()
+        )
         self._sock.sendto(al.get_bytes(), (self._base_address, self._base_port))
 
 # -- Privates Below -- #

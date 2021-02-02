@@ -13,7 +13,7 @@ class AgentLocation(Message):
                  owner_id=None,
                  commanded_location=None
                  ):
-        Message.__init__(self, raw_bytes)
+        Message.__init__(self, raw_bytes, message_id=MESSAGE_AGENT_LOCATION, source_id=owner_id, target_id=agent_id)
 
         if raw_bytes is None:
             # No bytes, we are making a message

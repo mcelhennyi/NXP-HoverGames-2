@@ -45,6 +45,7 @@ int main()
     system->run();
 
     // Hold, if we ctrl-c cleanup and end
+    std::cout << "Running system." << std::endl;
     while(run)
     {
         // Allows for an exit every second (so 1 second to react to a ctrl-c action)
