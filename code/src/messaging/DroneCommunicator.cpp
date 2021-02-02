@@ -6,7 +6,7 @@
 
 namespace Messaging
 {
-    DroneCommunicator::DroneCommunicator(): Communicator(/* Unknown id, will be assigned */), _baseStationListen("0.0.0.0", 12345)
+    DroneCommunicator::DroneCommunicator(): Communicator("0.0.0.0", 12347/* Unknown id, will be assigned */), _baseStation("0.0.0.0", 12345)
     {
 
     }
@@ -21,7 +21,7 @@ namespace Messaging
         helloMessage.address.ip4 = 0; // TODO: Link to _listenDetails
         helloMessage.listeningPort = _listenDetails.port;
         helloMessage.node_type = NodeType::NODE_TYPE_AGENT;
-        sendMessage(_baseStationListen, (char*)&helloMessage, sizeof(Hello));
+        sendMessage(_baseStation, (char*)&helloMessage, sizeof(Hello));
     }
 }
 

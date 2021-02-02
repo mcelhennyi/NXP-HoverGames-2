@@ -6,7 +6,7 @@
 
 #include <messaging/messages/agent/agentLocation.h>
 
-#define CONNECTION_URL "127.0.0.1:5760"
+#define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
 #define SET_POINT_TIMEOUT (uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
@@ -16,16 +16,20 @@ namespace System
 {
     Agent::Agent(): Runnable(10), _lastTargetTime(false), _agentState(AgentStateEnum::WAIT)
     {
-
+        _communicator = new Messaging::DroneCommunicator();
     }
 
     Agent::~Agent()
     {
-
+        delete _communicator;
     }
 
     void Agent::doSetup()
     {
+        // Turn on Comms
+        _communicator->setup();
+        _communicator->run();
+
         std::mutex              connectedToBaseMutex;
         std::atomic_bool        connectedToBase(false);
         std::condition_variable connectedToBaseCv;
@@ -59,7 +63,6 @@ namespace System
             std::cout << "Connection failed: " << connectionResult << std::endl;
             stop(); // Force a stop
         }
-
 
         // Discover the system
         std::cout << "Waiting to discover system..." << std::endl;
@@ -390,6 +393,8 @@ namespace System
         // copy to our class var (this gets deleted once this callback is over)
         _newTargetReceivedTimeUs = Utils::Time::microsNow();
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
+
+        // std::cout << "Agent move command from " << (int)_newMoveCommand.header.source_id << std::endl;
 
         // Mark this as NOT stale
         std::lock_guard<std::mutex> actionStateLock(_agentStateMutex);

@@ -19,7 +19,7 @@ namespace Messaging
         void sendHello();
 
     protected:
-        CommDetails _baseStationListen;
+        CommDetails _baseStation;
 
     };
 }

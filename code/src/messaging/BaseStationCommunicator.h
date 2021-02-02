@@ -21,10 +21,10 @@ namespace Messaging
 
     public:
         void sendWelcome(std::string ipAddr, int port, char nodeId);
-        void forwardAgentLocation(char targetId, AgentLocation *agentLocationMessage);
-        void forwardSubjectLocation(char targetId, SubjectLocation *subjectLocationMessage);
+        void forwardAgentLocation(unsigned char targetId, AgentLocation *agentLocationMessage);
+        void forwardSubjectLocation(unsigned char targetId, SubjectLocation *subjectLocationMessage);
 
-        void sendAgentMove(char targetId, Location targetLoaction);
+        void sendAgentMove(unsigned char targetId, Location targetLoaction);
 
     };
 }

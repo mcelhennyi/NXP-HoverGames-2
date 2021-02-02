@@ -70,7 +70,7 @@ SubjectDict = Dict[int, Subject]
 
 class ControllerInterface:
 
-    def __init__(self, base_ip_address="127.0.0.1", base_port=12345, my_ip_address="127.0.0.1", listening_port=12346):
+    def __init__(self, base_ip_address="127.0.0.1", base_port=12345, my_ip_address="127.0.0.1", listening_port=12349):
         # Setup all data this interface needs to own
         self._agents = dict()  # Of type id:Agent
         self._subjects = dict()

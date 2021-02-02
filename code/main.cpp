@@ -32,10 +32,12 @@ int main()
     // Setup our system code
 #if BASE_MODE
     // Base station
-    auto system = new System::BaseStation();
+    std::cout << "Running base station." << std::endl;
+    auto system = new ::System::BaseStation();
 #else
     // Agent station
-    auto system = new System::Agent();
+    std::cout << "Running agent." << std::endl;
+    auto system = new ::System::Agent();
 #endif
 
     // Setup the system
@@ -45,7 +47,6 @@ int main()
     system->run();
 
     // Hold, if we ctrl-c cleanup and end
-    std::cout << "Running system." << std::endl;
     while(run)
     {
         // Allows for an exit every second (so 1 second to react to a ctrl-c action)

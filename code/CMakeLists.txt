@@ -3,6 +3,10 @@ project(HoverGames2)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
 # Enable strict handling of warnings
 add_definitions("-Wall -Wextra -Werror -Wno-reorder -Wno-unused-parameter")
 

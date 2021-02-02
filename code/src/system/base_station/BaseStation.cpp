@@ -62,12 +62,12 @@ namespace System
         // TODO: make this a better matching, for now we will use most recently communicated from and assume ther is only one controller at time active.
         // Match active agents with active controllers
         std::unique_lock<std::mutex> lock(_activeControllersMutex);
-        unsigned char bestController;
+        unsigned char bestController = 0;
         unsigned long bestControllerTime = 0;
         // Find the most recent controller
         for(auto &controller: _activeControllers)
         {
-            if(controller.second.lastMsgTime > bestControllerTime)
+            if(controller.second.lastMsgTime >= bestControllerTime)
             {
                 bestController = controller.first;
                 bestControllerTime = controller.second.lastMsgTime;
@@ -75,22 +75,26 @@ namespace System
         }
 
         // Now we have the "best" controller...give it agent ownership
-        for(auto &agent: _activeAgents)
+        if(_activeControllers.size() >= 1)
         {
-            auto ownerMapIter = _agentOwnerMap.find(agent.first);
-            if(ownerMapIter == _agentOwnerMap.end())
+            for (auto &agent: _activeAgents)
             {
-                // No mapping for this agent, lets make one
-                std::cout << "Creating assignment for agent " << (int)agent.first << " to controller " << (int)bestController << std::endl;
-                _agentOwnerMap.insert(std::make_pair(agent.first, bestController));
-            }
-            else
-            {
-                if(ownerMapIter->second != bestController)
+                auto ownerMapIter = _agentOwnerMap.find(agent.first);
+                if (ownerMapIter == _agentOwnerMap.end())
                 {
-                    // We already have a mapping for this agent, lets update its controller
-                    std::cout << "Re-assigning agent " << (int)agent.first << " to controller " << (int)bestController << std::endl;
-                    ownerMapIter->second = bestController;
+                    // No mapping for this agent, lets make one
+                    std::cout << "Creating assignment for agent " << (int) agent.first << " to controller "
+                              << (int) bestController << std::endl;
+                    _agentOwnerMap.insert(std::make_pair(agent.first, bestController));
+                } else
+                {
+                    if (ownerMapIter->second != bestController)
+                    {
+                        // We already have a mapping for this agent, lets update its controller
+                        std::cout << "Re-assigning agent " << (int) agent.first << " to controller "
+                                  << (int) bestController << std::endl;
+                        ownerMapIter->second = bestController;
+                    }
                 }
             }
         }
@@ -118,20 +122,26 @@ namespace System
         // Mark this node down as an agent or a controller
         if(hello->node_type == NodeType::NODE_TYPE_AGENT)
         {
+            std::cout << "Adding agent " << (int)nodeId << " to Active agents map." << std::endl;
+
             // Set the agent params - the origin will be set below on first location message after HELLO message
             AgentParams agentParams = {};
             agentParams.lastLocationUpdateTime = 0;
+            agentParams.lastMessageTime = Utils::Time::microsNow();
             _activeAgents.emplace(std::make_pair(nodeId, agentParams));
         }
         else if(hello->node_type == NodeType::NODE_TYPE_CONTROLLER)
         {
             std::unique_lock<std::mutex> lock(_activeControllersMutex);
 
+            std::cout << "Adding controller " << (int)nodeId << " to Active controller map." << std::endl;
+
             ControllerParams controllerParams = {};
             // TODO: These eventually will come from the hello message (likely) for now we assume same position as base.
             controllerParams.controllerToBaseOffset.x = 0;
             controllerParams.controllerToBaseOffset.y = 0;
             controllerParams.controllerToBaseOffset.z = 0;
+            controllerParams.lastMsgTime = Utils::Time::microsNow();
             _activeControllers.emplace(std::make_pair(nodeId, controllerParams));
         }
         else
@@ -146,7 +156,9 @@ namespace System
         // OTHERWISE, if we do not return due to an erroneous type above, lets send a WELCOME message
 
         // Send the welcome, join to network
-        std::cout << "Joining " << ipAddr << ":" << hello->listeningPort << " to the network as a " << (int) hello->node_type << " with ID " << (int) nodeId << std::endl;
+        std::cout << "Joining " << ipAddr << ":" << hello->listeningPort << " to the network as a " <<
+        (hello->node_type == NodeType::NODE_TYPE_AGENT ? "NODE_TYPE_AGENT": hello->node_type == NodeType::NODE_TYPE_CONTROLLER ? "NODE_TYPE_CONTROLLER": hello->node_type == NodeType::NODE_TYPE_BASE ? "NODE_TYPE_BASE" : "UNKNOWN TYPE")
+        << " with ID " << (int) nodeId << std::endl;
         _communicator->sendWelcome(ipAddr, hello->listeningPort, nodeId);
     }
 
@@ -235,9 +247,10 @@ namespace System
 
         // Grab this controllers details
         auto controller = _activeControllers.find(agentMoveCommand->header.source_id);
-        if(controller != _activeControllers.end())
+        if(controller == _activeControllers.end())
         {
             std::cout << "Controller not found, " <<  (int)agentMoveCommand->header.source_id << std::endl;
+            return;
         }
 
         // Transform move to drone coordinates

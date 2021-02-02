@@ -62,6 +62,8 @@ namespace System
             // Origin location
             bool            originSet;
             Location        agentOriginOffset;
+
+            unsigned long   lastMessageTime;
         };
 
         bool                                    _running;
