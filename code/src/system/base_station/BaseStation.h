@@ -51,6 +51,7 @@ namespace System
         struct ControllerParams
         {
             Location        controllerToBaseOffset;
+            unsigned long   lastMsgTime;
         };
 
         struct AgentParams
@@ -71,6 +72,8 @@ namespace System
 
         // Track the agents and controllers
         std::map<char, AgentParams>             _activeAgents;
+
+        std::mutex                              _activeControllersMutex;
         std::map<char, ControllerParams>        _activeControllers;
 
         std::map<char, char>                    _agentOwnerMap; // Agent (first) <-- Owner (second)

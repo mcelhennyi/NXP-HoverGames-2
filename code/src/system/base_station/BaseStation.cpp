@@ -58,7 +58,43 @@ namespace System
     void BaseStation::doRun()
     {
         // Called specified rate in constructor
-        // std::cout << "RUN!" << std::endl;
+
+        // TODO: make this a better matching, for now we will use most recently communicated from and assume ther is only one controller at time active.
+        // Match active agents with active controllers
+        std::unique_lock<std::mutex> lock(_activeControllersMutex);
+        unsigned char bestController;
+        unsigned long bestControllerTime = 0;
+        // Find the most recent controller
+        for(auto &controller: _activeControllers)
+        {
+            if(controller.second.lastMsgTime > bestControllerTime)
+            {
+                bestController = controller.first;
+                bestControllerTime = controller.second.lastMsgTime;
+            }
+        }
+
+        // Now we have the "best" controller...give it agent ownership
+        for(auto &agent: _activeAgents)
+        {
+            auto ownerMapIter = _agentOwnerMap.find(agent.first);
+            if(ownerMapIter == _agentOwnerMap.end())
+            {
+                // No mapping for this agent, lets make one
+                std::cout << "Creating assignment for agent " << (int)agent.first << " to controller " << (int)bestController << std::endl;
+                _agentOwnerMap.insert(std::make_pair(agent.first, bestController));
+            }
+            else
+            {
+                if(ownerMapIter->second != bestController)
+                {
+                    // We already have a mapping for this agent, lets update its controller
+                    std::cout << "Re-assigning agent " << (int)agent.first << " to controller " << (int)bestController << std::endl;
+                    ownerMapIter->second = bestController;
+                }
+            }
+        }
+
     }
 
     void BaseStation::doStop()
@@ -89,6 +125,8 @@ namespace System
         }
         else if(hello->node_type == NodeType::NODE_TYPE_CONTROLLER)
         {
+            std::unique_lock<std::mutex> lock(_activeControllersMutex);
+
             ControllerParams controllerParams = {};
             // TODO: These eventually will come from the hello message (likely) for now we assume same position as base.
             controllerParams.controllerToBaseOffset.x = 0;
@@ -131,6 +169,8 @@ namespace System
             return;
         }
 
+        // TODO: inject ownership into the message
+
         // Broad cast to all controllers
         for(auto controllerId: _activeControllers)
         {
@@ -171,6 +211,18 @@ namespace System
         {
             std::cout << "Error, agent move command from non controller node" << std::endl;
             return;
+        }
+
+        // Mark this as an active
+        {
+            std::unique_lock<std::mutex> lock(_activeControllersMutex);
+            auto activeControllerIter = _activeControllers.find(agentMoveCommand->header.source_id);
+            if (activeControllerIter == _activeControllers.end())
+            {
+                std::cout << "Unknown active controller." << std::endl;
+                return;
+            }
+            activeControllerIter->second.lastMsgTime = Utils::Time::microsNow();
         }
 
         // Make sure this controller owns control of this agent
