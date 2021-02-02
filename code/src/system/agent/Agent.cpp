@@ -8,7 +8,7 @@
 
 #define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
-#define SET_POINT_TIMEOUT (uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
+#define SET_POINT_TIMEOUT 10000000 // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
 #define SETTLE_TIME_SECONDS 2
 
@@ -85,7 +85,14 @@ namespace System
         }
 
         // Capture the system
-        _system = _mavsdk.systems().at(0);
+        for(auto &system: _mavsdk.systems())
+        {
+            if(system->get_system_id() == 1) // grab the ap
+            {
+                _system = system;
+                break;
+            }
+        }
 
         // Register a callback so we get told when components (camera, gimbal) etc
         // are found.
@@ -106,21 +113,27 @@ namespace System
         _telemetry->set_rate_landed_state(10);
         _telemetry->subscribe_landed_state([&](Telemetry::LandedState landedState){
             std::unique_lock<std::mutex> lock(_droneStateMutex);
+
+            if(_droneState!= landedState)
+                std::cout << "Drone is in LandedState: " <<
+                          (landedState == Telemetry::LandedState::TakingOff ? "TakingOff" :
+                           landedState == Telemetry::LandedState::InAir ? "InAir" :
+                           landedState == Telemetry::LandedState::Landing ? "Landing" :
+                           landedState == Telemetry::LandedState::OnGround ? "OnGround" :
+                           landedState == Telemetry::LandedState::Unknown ? "Unknown" : "") << std::endl;
+
             _droneState = landedState;
-
-            std::cout << "Drone is in LandedState: " <<
-                (_droneState == Telemetry::LandedState::TakingOff ? "TakingOff" :
-                    _droneState == Telemetry::LandedState::InAir ? "InAir" :
-                    _droneState == Telemetry::LandedState::Landing ? "Landing" :
-                    _droneState == Telemetry::LandedState::OnGround ? "OnGround" :
-                    _droneState == Telemetry::LandedState::Unknown ? "Unknown" : "") << std::endl;
-
         });
 
         _telemetry->subscribe_armed([&](bool armed){
+            if(_armed != armed)
+                std::cout << "Drone is " << (armed ? "Armed": "Disarmed") << std::endl;
+
             _armed = armed;
-            std::cout << "Drone is " << (armed ? "Armed": "Disarmed") << std::endl;
         });
+
+        // Grab the offboard controller
+        _offboard = std::make_shared<Offboard>(_system);
 
     }
 
@@ -132,26 +145,48 @@ namespace System
         std::unique_lock<std::mutex> agentStateLock(_agentStateMutex);
         std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
 
+        AgentStateEnum nextState = _agentState; // default to current state
+
         // Check for an expiration
         auto timeNow = Utils::Time::microsNow();
         if(timeNow - _newTargetReceivedTimeUs > SET_POINT_TIMEOUT)
         {
             // We have timed out (the time between now and the last message is too great)
-            std::cout << "AgentMoveCommand expired, too much time since last message." << std::endl;
+            if(!_staleTarget)
+                std::cout << "AgentMoveCommand expired, too much time since last message." << std::endl;
             _staleTarget = true;
+
+            // Make sure we do a shutdown sequence when we stop getting messages
+            if(_agentState == AgentStateEnum::TAKEOFF || _agentState == AgentStateEnum::TARGETING_MODE)
+            {
+                std::cout << "Commanding RTL due to message timeout." << std::endl;
+                _agentState = AgentStateEnum::RETURN_TO_LAUNCH;  // Here we set directly
+            }
         }
         else
         {
             _staleTarget = false;
         }
 
-        AgentStateEnum nextState = AgentStateEnum::WAIT;
+        if(_agentState != _lastAgentState)
+            std::cout << "AGENT STATE: " <<
+                                         (_agentState == AgentStateEnum::WAIT ? "WAIT":
+                                         _agentState == AgentStateEnum::LAND ? "LAND":
+                                         _agentState == AgentStateEnum::RETURN_TO_LAUNCH ? "RETURN_TO_LAUNCH":
+                                         _agentState == AgentStateEnum::TAKEOFF ? "TAKEOFF":
+                                         _agentState == AgentStateEnum::TARGETING_MODE ? "TARGETING_MODE": "UNKNOWN")
+                    << std::endl;
+
         switch (_agentState)
         {
             case WAIT:
             {
                 // Lock and wait for a non stale target
+                droneStateLock.unlock();
                 _agentStateCV.wait(agentStateLock, [&](){ return !(_staleTarget.load()); });
+                droneStateLock.lock();
+
+
 
                 // The target is not stale, lets go after it (takeoff first)
                 if (!_staleTarget)
@@ -161,7 +196,7 @@ namespace System
                         nextState = AgentStateEnum::TAKEOFF;
                         _homeLocationGround = _currentPosition;
                         _homeLocationAir = _homeLocationGround;
-                        _homeLocationAir.z = SAFE_ALTITUDE;
+                        _homeLocationAir.z = -5; // SAFE_ALTITUDE // todo put back
                     }
                     else
                     {
@@ -172,21 +207,29 @@ namespace System
             }
             case TAKEOFF:
             {
-                if (_droneState == Telemetry::LandedState::OnGround)
+                agentStateLock.unlock();
+                if (_droneState == Telemetry::LandedState::OnGround && !_takeoffCommanded)
                 {
+                    droneStateLock.unlock();
+
                     // First ARM
+                    std::cout << "Sending arm command..." << std::endl;
+                    _takeoffCommanded = false;
                     auto result = _action->arm();
                     if (result == Action::Result::Success)
                     {
                         // Send takeoff command
-                        result = _action->set_takeoff_altitude(SAFE_ALTITUDE);
+                        std::cout << "Setting takeoff altitude..." << std::endl;
+                        result = _action->set_takeoff_altitude(5); // SAFE_ALTITUDE TODO put back
                         if (result == Action::Result::Success)
                         {
+                            std::cout << "Sending takeoff command..." << std::endl;
                             result = _action->takeoff();
                             if (result != Action::Result::Success)
                             {
                                 std::cout << "Error: Failed to takeoff: " << result << std::endl;
                             }
+                            _takeoffCommanded = true;
                         }
                         else
                         {
@@ -198,7 +241,7 @@ namespace System
                         std::cout << "Error: Failed to arm: " << result << std::endl;
                     }
                 }
-                else if (_droneState == Telemetry::LandedState::TakingOff)
+                else if (_droneState == Telemetry::LandedState::TakingOff)  // TODO: This state is NEVER reported
                 {
                     // DO nothing, we are waiting
                 }
@@ -206,17 +249,24 @@ namespace System
                 {
                     nextState = AgentStateEnum::TARGETING_MODE;
                 }
+                // else
+                // {
+                //     std::cout << "Waiting on takeoff sequence to complete" << std::endl;
+                // }
 
                 // Check the position, we want to be at our takeoff location (some height above the ground point)
-                // // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
-                // if(atPosition(_homeLocationAir))
-                // {
-                //     nextState = AgentStateEnum::TARGETING_MODE;
-                // }
+                // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
+                if(atPosition(_homeLocationAir))
+                {
+                    std::cout << "Drone at position, moving on." << std::endl;
+                    nextState = AgentStateEnum::TARGETING_MODE;
+                }
                 break;
             }
             case TARGETING_MODE:
             {
+                agentStateLock.unlock();
+
                 std::unique_lock<std::mutex> targetLocationLock(_targetCommandMutex);
 
                 // Send the command for the target location to the autopilot
@@ -225,6 +275,9 @@ namespace System
                 positionNedYaw.east_m = _newMoveCommand.target_location.y;
                 positionNedYaw.down_m = SAFE_ALTITUDE;
                 positionNedYaw.yaw_deg = 0;
+                targetLocationLock.unlock();
+
+                std::cout << "Setting set position for offboard control" << std::endl;
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -232,17 +285,25 @@ namespace System
                 }
                 else
                 {
-                    result = _offboard->start();
-                    if(result != Offboard::Result::Success)
+                    std::cout << "Offboard mode is " << _offboard->is_active() << std::endl;
+                    if(!_offboard->is_active())
                     {
-                        std::cout << "Error: Failed to start offboard mode: " << result << std::endl;
+                        std::cout << "Starting offboard control..." << std::endl;
+                        result = _offboard->start();
+                        if (result != Offboard::Result::Success)
+                        {
+                            std::cout << "Error: Failed to start offboard mode: " << result << std::endl;
+                        }
                     }
                 }
                 break;
             }
             case RETURN_TO_LAUNCH:
             {
-                std::unique_lock<std::mutex> targetLocationLock(_targetCommandMutex);
+                agentStateLock.unlock();
+                droneStateLock.unlock();
+
+                std::unique_lock<std::mutex> homeLocationLock(_homeLocationsMutex);
 
                 // Command a return to home
                 Offboard::PositionNedYaw positionNedYaw;
@@ -250,6 +311,7 @@ namespace System
                 positionNedYaw.east_m = _homeLocationAir.y;
                 positionNedYaw.down_m = _homeLocationAir.z;
                 positionNedYaw.yaw_deg = 0;
+
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -260,10 +322,12 @@ namespace System
                 if(atPosition(_homeLocationAir))
                 {
                     // Turn off offboard mode
+                    std::cout << "Disabling offboard mode..."<<std::endl;
                     result = _offboard->stop();
                     if(result == Offboard::Result::Success)
                     {
-                        _agentState = AgentStateEnum::LAND;
+                        std::cout << "Offboard mode disabled, LANDing"<<std::endl;
+                        nextState = AgentStateEnum::LAND;
                     }
                     else
                     {
@@ -274,8 +338,11 @@ namespace System
             }
             case LAND:
             {
+                agentStateLock.unlock();
+
                 if(_droneState == Telemetry::LandedState::InAir)
                 {
+                    droneStateLock.unlock();
                     // Send land command
                     auto result = _action->land();
                     if(result != Action::Result::Success)
@@ -306,7 +373,13 @@ namespace System
             }
         }
 
+        if(!agentStateLock.owns_lock())
+        {
+            agentStateLock.lock();
+        }
+        _lastAgentState = _agentState;
         _agentState = nextState;
+
     }
 
     void Agent::doStop()
@@ -316,6 +389,8 @@ namespace System
         {
             if(_droneState == Telemetry::LandedState::InAir)
             {
+                droneStateLock.unlock();
+
                 // Send land command
                 auto result = _action->land();
                 if(result != Action::Result::Success)
@@ -359,6 +434,7 @@ namespace System
         if(d <= DISTANCE_THRESHOLD)
         {
             // Lets sleep some time for settling
+            lock.unlock();
             usleep(1000000 * SETTLE_TIME_SECONDS);
             return true;
         }
@@ -385,6 +461,8 @@ namespace System
     // Messaging Callbacks
     void Agent::onAgentMoveCommand(char* agentMoveCommandMessage)
     {
+        // auto tmp = (AgentMoveCommand*) agentMoveCommandMessage;
+        // std::cout << "MOVE START: " <<  tmp->header.timestamp << std::endl;
         std::unique_lock<std::mutex> lock(_targetCommandMutex);
 
         // Save off the old command
@@ -400,6 +478,7 @@ namespace System
         std::lock_guard<std::mutex> actionStateLock(_agentStateMutex);
         _staleTarget = false;
         _agentStateCV.notify_all();
+        // std::cout << "MOVE END: " <<  tmp->header.timestamp << std::endl;
 
     }
     // End Messaging Callbacks

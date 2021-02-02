@@ -1,6 +1,6 @@
 #include <iostream>
 
-#define BASE_MODE 1 // 1 enables base mode, else this will run as a agent.
+#define BASE_MODE 0 // 1 enables base mode, else this will run as a agent.
 
 #include <unistd.h>
 #include <signal.h>

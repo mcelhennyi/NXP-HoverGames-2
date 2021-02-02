@@ -112,4 +112,4 @@ RUN cd ~/px4 && sudo bash ./Tools/setup/ubuntu.sh
 
 # SITL setup for quad with optical flow - https://docs.px4.io/master/en/simulation/gazebo.html
 # RUN HEADLESS=1 make px4_sitl gazebo_iris_opt_flow
-# RUN mavlink-routerd -e <QGC PATH>:14550 127.0.0.1:14550
+# RUN  mavlink-routerd -e  <docker host ip - 192.168.65.2>:14550 127.0.0.1:14550

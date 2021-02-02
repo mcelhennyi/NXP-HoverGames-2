@@ -78,9 +78,11 @@ namespace System
         std::atomic_bool                    _armed;
         std::mutex                          _droneStateMutex;
         Telemetry::LandedState              _droneState;
+        std::atomic_bool                    _takeoffCommanded;
 
         // States
         AgentStateEnum                      _agentState;
+        AgentStateEnum                      _lastAgentState;
         std::mutex                          _agentStateMutex;
         std::condition_variable             _agentStateCV;
 
