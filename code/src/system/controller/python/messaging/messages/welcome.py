@@ -11,4 +11,4 @@ class WelcomeMessage(Message):
         self._welcome_tuple = self.unpack(welcome)
 
     def get_node_id(self):
-        return self._header_tuple[0]
+        return self._welcome_tuple[0]

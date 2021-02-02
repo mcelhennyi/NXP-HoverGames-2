@@ -1,8 +1,7 @@
 import socket
 import threading
 
-from collections.abc import Callable
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 from src.system.controller.python.messaging.parser import decode_message
 from src.system.controller.python.messaging.messages.hello import HelloMessage
@@ -44,6 +43,9 @@ class Subject:
         # This is assigned by the interface, not the user!
         self._id = id_
 
+    def get_id(self):
+        return self._id
+
     def get_location(self):
         return self._x_location, self._y_location, self._z_location
 
@@ -56,12 +58,13 @@ class Subject:
 
 class Agent(Subject):
     def __init__(self, id_, owner_id, location_tuple, target_tuple):
-        Subject.__init__(self, id_, owner_id, location_tuple, target_tuple)
+        Subject.__init__(self, owner_id, location_tuple, target_tuple)
+        self.set_id(id_)
 
 
-AgentDict = Dict[Agent]
+AgentDict = Dict[int, Agent]
 AgentList = List[Agent]
-SubjectDict = Dict[Subject]
+SubjectDict = Dict[int, Subject]
 
 
 class ControllerInterface:
@@ -80,6 +83,7 @@ class ControllerInterface:
                                    socket.SOCK_DGRAM)  # UDP
         self._port = listening_port
         self._sock.bind(('', self._port))
+        self._sock.settimeout(1)
 
         # Setup send sock
         self._my_ip_address = my_ip_address
@@ -113,7 +117,7 @@ class ControllerInterface:
         self._running = False
         self._listen_thread.join()
 
-    def register_new_agent_location_callback(self, callback: Callable[Agent]):
+    def register_new_agent_location_callback(self, callback: Callable[[Agent], None]):
         """
         The callback will be called when a new agent location is received.
 
@@ -132,7 +136,7 @@ class ControllerInterface:
     #     # TODO - removed for now since the user of this class will be the single source of subjects - for now.
     #     pass
 
-    def register_ownership_change_callback(self, callback: Callable[Agent]):
+    def register_ownership_change_callback(self, callback: Callable[[Agent], None]):
         """
         This callback will be called when ownership of an agent changes.
 
@@ -140,6 +144,11 @@ class ControllerInterface:
         :return:
         """
         self._ownership_change_callback = callback
+
+    def get_id(self):
+        if self._my_id is None:
+            print("WARNING: ID not set yet, please connect to base station first.")
+        return self._my_id
 
     def get_agents(self) -> AgentDict:
         return self._agents
@@ -168,10 +177,11 @@ class ControllerInterface:
 
         return new_subject_id
 
-    def command_agent_location(self, agent_id, location: AgentLocation):
-        pass
+    def command_agent_location(self, agent: Agent):
+        al = AgentLocation(agent_id=agent.get_id(), owner_id=agent.get_owner(), commanded_location=agent.get_destination())
+        self._sock.sendto(al.get_bytes(), (self._base_address, self._base_port))
 
-    # -- Privates Below -- #
+# -- Privates Below -- #
 
     def _connect_to_base(self):
         # Connect to base
@@ -190,14 +200,18 @@ class ControllerInterface:
     def _listener(self):
         print("Listening on port " + str(self._port) + " for messages.")
         while self._running:
-            data, address = self._sock.recvfrom(1024)
+            try:
+                data, address = self._sock.recvfrom(1024)
 
-            # Parse for a Message
-            message = self._on_new_message(data)
+                # Parse for a Message
+                if data:
+                    message = self._on_new_message(data)
 
-            # Now handle that Message
-            if message is not None:
-                self._handle_message(message)
+                    # Now handle that Message
+                    if message is not None:
+                        self._handle_message(message)
+            except socket.timeout as to:
+                pass
 
     def _on_new_message(self, msg_bytes):
         return decode_message(msg_bytes)
