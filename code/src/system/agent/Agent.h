@@ -93,6 +93,7 @@ namespace System
         uint64_t                            _newTargetReceivedTimeUs;
         AgentMoveCommand                    _newMoveCommand;
         AgentMoveCommand                    _lastMoveCommand;
+        int                                 _atTargetCounter;
 
         // Home
         std::mutex                          _homeLocationsMutex;

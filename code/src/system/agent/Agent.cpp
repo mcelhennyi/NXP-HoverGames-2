@@ -10,7 +10,7 @@
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
 #define SET_POINT_TIMEOUT 10000000 // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
-#define SETTLE_TIME_SECONDS 2
+#define SETTLE_TIMES 10
 
 namespace System
 {
@@ -208,38 +208,43 @@ namespace System
             case TAKEOFF:
             {
                 agentStateLock.unlock();
-                if (_droneState == Telemetry::LandedState::OnGround && !_takeoffCommanded)
+                if ((_droneState == Telemetry::LandedState::OnGround && !_takeoffCommanded) || !_armed)
                 {
                     droneStateLock.unlock();
 
                     // First ARM
-                    std::cout << "Sending arm command..." << std::endl;
-                    _takeoffCommanded = false;
-                    auto result = _action->arm();
+                    if(!_armed)
+                    {
+                        std::cout << "Sending arm command..." << std::endl;
+                        _takeoffCommanded = false;
+                        auto result = _action->arm();
+                        if (result != Action::Result::Success)
+                        {
+                            std::cout << "Error: Failed to arm: " << result << std::endl;
+                            break;
+                        }
+                    }
+
+                    // Send takeoff command
+                    std::cout << "Setting takeoff altitude..." << std::endl;
+                    auto result = _action->set_takeoff_altitude(5); // SAFE_ALTITUDE TODO put back
                     if (result == Action::Result::Success)
                     {
-                        // Send takeoff command
-                        std::cout << "Setting takeoff altitude..." << std::endl;
-                        result = _action->set_takeoff_altitude(5); // SAFE_ALTITUDE TODO put back
-                        if (result == Action::Result::Success)
+                        std::cout << "Sending takeoff command..." << std::endl;
+                        result = _action->takeoff();
+                        if (result != Action::Result::Success)
                         {
-                            std::cout << "Sending takeoff command..." << std::endl;
-                            result = _action->takeoff();
-                            if (result != Action::Result::Success)
-                            {
-                                std::cout << "Error: Failed to takeoff: " << result << std::endl;
-                            }
-                            _takeoffCommanded = true;
+                            _takeoffCommanded = false;
+                            std::cout << "Error: Failed to takeoff: " << result << std::endl;
                         }
-                        else
-                        {
-                            std::cout << "Error: Failed to set takeoff altitude: " << result << std::endl;
-                        }
+                        _takeoffCommanded = true;
                     }
                     else
                     {
-                        std::cout << "Error: Failed to arm: " << result << std::endl;
+                        _takeoffCommanded = false;
+                        std::cout << "Error: Failed to set takeoff altitude: " << result << std::endl;
                     }
+
                 }
                 else if (_droneState == Telemetry::LandedState::TakingOff)  // TODO: This state is NEVER reported
                 {
@@ -248,6 +253,7 @@ namespace System
                 else if (_droneState == Telemetry::LandedState::InAir)
                 {
                     nextState = AgentStateEnum::TARGETING_MODE;
+                    _takeoffCommanded = false;
                 }
                 // else
                 // {
@@ -259,6 +265,7 @@ namespace System
                 if(atPosition(_homeLocationAir))
                 {
                     std::cout << "Drone at position, moving on." << std::endl;
+                    _takeoffCommanded = false;
                     nextState = AgentStateEnum::TARGETING_MODE;
                 }
                 break;
@@ -266,6 +273,7 @@ namespace System
             case TARGETING_MODE:
             {
                 agentStateLock.unlock();
+                droneStateLock.unlock();
 
                 std::unique_lock<std::mutex> targetLocationLock(_targetCommandMutex);
 
@@ -277,7 +285,7 @@ namespace System
                 positionNedYaw.yaw_deg = 0;
                 targetLocationLock.unlock();
 
-                std::cout << "Setting set position for offboard control" << std::endl;
+                // std::cout << "Setting set position for offboard control" << std::endl;
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -311,7 +319,7 @@ namespace System
                 positionNedYaw.east_m = _homeLocationAir.y;
                 positionNedYaw.down_m = _homeLocationAir.z;
                 positionNedYaw.yaw_deg = 0;
-
+                // std::cout << "Setting position for return to launch." << std::endl;
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -343,6 +351,7 @@ namespace System
                 if(_droneState == Telemetry::LandedState::InAir)
                 {
                     droneStateLock.unlock();
+
                     // Send land command
                     auto result = _action->land();
                     if(result != Action::Result::Success)
@@ -433,11 +442,13 @@ namespace System
         // Now compare to distance threshold
         if(d <= DISTANCE_THRESHOLD)
         {
-            // Lets sleep some time for settling
-            lock.unlock();
-            usleep(1000000 * SETTLE_TIME_SECONDS);
-            return true;
+            // Increment the success counter
+            ++_atTargetCounter;
+            return _atTargetCounter >= SETTLE_TIMES;
         }
+
+        // Reset the success counter
+        _atTargetCounter = 0;
 
         // Delay for some time to settle, before allowing a state transition.
         return false;
