@@ -47,7 +47,7 @@ namespace System
 
     protected:
         // Position monitoring thread
-        bool atPosition(Location target);
+        bool atPosition(Location target, bool zOnly=false);
 
         // MAVSDK callbacks
 

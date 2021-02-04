@@ -199,7 +199,7 @@ namespace System
                         nextState = AgentStateEnum::TAKEOFF;
                         _homeLocationGround = _currentPosition;
                         _homeLocationAir = _homeLocationGround;
-                        _homeLocationAir.z = -5; // SAFE_ALTITUDE // todo put back
+                        _homeLocationAir.z = SAFE_ALTITUDE;
                     }
                     else
                     {
@@ -230,7 +230,7 @@ namespace System
 
                     // Send takeoff command
                     std::cout << "Setting takeoff altitude..." << std::endl;
-                    auto result = _action->set_takeoff_altitude(5); // SAFE_ALTITUDE TODO put back
+                    auto result = _action->set_takeoff_altitude(-SAFE_ALTITUDE);
                     if (result == Action::Result::Success)
                     {
                         std::cout << "Sending takeoff command..." << std::endl;
@@ -265,7 +265,7 @@ namespace System
 
                 // Check the position, we want to be at our takeoff location (some height above the ground point)
                 // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
-                if(atPosition(_homeLocationAir))
+                if(atPosition(_homeLocationAir, true))
                 {
                     std::cout << "Drone at position, moving on." << std::endl;
                     _takeoffCommanded = false;
@@ -288,7 +288,7 @@ namespace System
                 positionNedYaw.yaw_deg = 0;
                 targetLocationLock.unlock();
 
-                // std::cout << "Setting set position for offboard control" << std::endl;
+                std::cout << "Setting set position for offboard control: (NED) " << positionNedYaw.north_m << ", " << positionNedYaw.east_m << ", " << positionNedYaw.down_m  << std::endl;
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -443,14 +443,23 @@ namespace System
     }
 
 
-    bool Agent::atPosition(Location target)
+    bool Agent::atPosition(Location target, bool zOnly)
     {
         std::unique_lock<std::mutex> lock(_currentPositionMutex);
 
         // First calculate the distance to the target
-        double d = sqrt(pow(target.x - _currentPosition.x, 2) +
-                       pow(target.y - _currentPosition.y, 2) +
-                       pow(target.z - _currentPosition.z, 2) * 1.0);
+        double d = 0;
+
+        if(zOnly)
+        {
+            d = target.z - _currentPosition.z;
+        }
+        else
+        {
+            d = sqrt(pow(target.x - _currentPosition.x, 2) +
+                     pow(target.y - _currentPosition.y, 2) +
+                     pow(target.z - _currentPosition.z, 2) * 1.0);
+        }
 
         // Now compare to distance threshold
         if(d <= DISTANCE_THRESHOLD)
@@ -495,6 +504,9 @@ namespace System
         // copy to our class var (this gets deleted once this callback is over)
         _newTargetReceivedTimeUs = Utils::Time::microsNow();
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
+
+        // char arr[sizeof(AgentMoveCommand)];
+        // memcpy(arr, agentMoveCommandMessage, sizeof(AgentMoveCommand));
 
         // std::cout << "Agent move command from " << (int)_newMoveCommand.header.source_id << std::endl;
 
