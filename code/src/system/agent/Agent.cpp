@@ -255,15 +255,15 @@ namespace System
                     }
 
                 }
-                else if (_droneState == Telemetry::LandedState::TakingOff)  // TODO: This state is NEVER reported
-                {
-                    // DO nothing, we are waiting
-                }
-                else if (_droneState == Telemetry::LandedState::InAir)
-                {
-                    nextState = AgentStateEnum::TARGETING_MODE;
-                    _takeoffCommanded = false;
-                }
+                // else if (_droneState == Telemetry::LandedState::TakingOff)  // TODO: This state is NEVER reported
+                // {
+                //     // DO nothing, we are waiting
+                // }
+                // else if (_droneState == Telemetry::LandedState::InAir)
+                // {
+                //     nextState = AgentStateEnum::TARGETING_MODE;
+                //     _takeoffCommanded = false;
+                // }
                 // else
                 // {
                 //     std::cout << "Waiting on takeoff sequence to complete" << std::endl;
