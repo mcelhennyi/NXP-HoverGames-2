@@ -47,7 +47,7 @@ def convert_enum_to_str(enum_val):
     elif enum_val == MESSAGE_AGENT_LOCATION:
         return "MESSAGE_AGENT_LOCATION"
     else:
-        return "UNKNOWN_MESSAGE"
+        return "UNKNOWN_MESSAGE - " + str(enum_val)
 
 
 # struct Header

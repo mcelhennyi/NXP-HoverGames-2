@@ -35,7 +35,7 @@ using namespace Messaging::Messages::Common;
 using namespace Messaging::Messages::Agent;
 using namespace Messaging::Messages::Controller;
 
-#define CALLBACK_HANDLER_THREAD_COUNT 10  // note work is done in these threads, so we may need more.
+#define CALLBACK_HANDLER_THREAD_COUNT 1  // note work is done in these threads, so we may need more.
 #define MAXLINE     1024
 
 namespace Messaging
@@ -91,14 +91,17 @@ namespace Messaging
         int                                                 _sockfdSend;
         char                                                _buffer[MAXLINE];
 
+        unsigned long                                       _lastTimeReceived;
+
         // Track the node locations
         std::map<unsigned char, CommDetails>                _nodes;
 
         // Track our ID for message header use
         unsigned char                                       _myId;
+        unsigned char                                       _baseId;
 
         // Use a thread pool for call back handling
-        thread_pool::static_pool                            _threadPool;
+        std::map<unsigned char, thread_pool::static_pool*>  _threadPoolMap;
 
         // Registration of callbacks - msg_id:callback
         std::map<unsigned char, std::function<void(char*)>> _callbacks;

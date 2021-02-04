@@ -33,7 +33,20 @@ namespace Messaging
 
     void BaseStationCommunicator::forwardAgentLocation(unsigned char targetId, AgentLocation *agentLocationMessage)
     {
+        CommDetails details;
+        auto commStruct = _nodes.find(targetId);
+        if(commStruct != _nodes.end())
+        {
+            details = commStruct->second;
+        }
+        else
+        {
+            std::cout << "Unable to locate comm details for agent " << (int)targetId << std::endl;
+            return;
+        }
 
+        fillHeader(targetId, MessageID::MESSAGE_AGENT_LOCATION, &agentLocationMessage->header);
+        sendMessage(details, (char*)agentLocationMessage, sizeof(AgentLocation));
     }
 
     void BaseStationCommunicator::forwardSubjectLocation(unsigned char targetId, SubjectLocation *subjectLocationMessage)

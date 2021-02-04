@@ -57,6 +57,7 @@ namespace System
         /// @brief Called when the position of the drone is sent
         void onNewPosition(Telemetry::PositionVelocityNed posvel);
 
+        void sendPositionToGround();
 
         // Messaging callbacks
         void onAgentMoveCommand(char* agentMoveCommandMessage);
@@ -101,6 +102,8 @@ namespace System
         std::mutex                          _homeLocationsMutex;
         Location                            _homeLocationGround;
         Location                            _homeLocationAir;
+
+        Utils::Thread::ThreadLoop           *_positionSendingThread;
 
     };
 }

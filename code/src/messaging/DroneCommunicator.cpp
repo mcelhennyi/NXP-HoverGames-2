@@ -23,5 +23,17 @@ namespace Messaging
         helloMessage.node_type = NodeType::NODE_TYPE_AGENT;
         sendMessage(_baseStation, (char*)&helloMessage, sizeof(Hello));
     }
+
+    void DroneCommunicator::sendAgentLocation(Location &currentLocation, Location &targetLocation)
+    {
+        AgentLocation agentLocation;
+
+        fillHeader(_baseId, MessageID::MESSAGE_AGENT_LOCATION, &agentLocation.header);
+        agentLocation.current_location = currentLocation;
+        agentLocation.target_location = targetLocation;
+        agentLocation.owner_id = _baseId;
+        agentLocation.agent_id = _myId;
+        sendMessage(_baseStation, (char*)&agentLocation, sizeof(AgentLocation));
+    }
 }
 

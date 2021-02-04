@@ -73,11 +73,13 @@ namespace System
         Messaging::BaseStationCommunicator      *_communicator;
 
         // Track the agents and controllers
+        std::mutex                              _activeAgentsMutex;
         std::map<char, AgentParams>             _activeAgents;
 
         std::mutex                              _activeControllersMutex;
         std::map<char, ControllerParams>        _activeControllers;
 
+        std::mutex                              _agentOwnerMutex;
         std::map<char, char>                    _agentOwnerMap; // Agent (first) <-- Owner (second)
 
 

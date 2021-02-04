@@ -17,6 +17,7 @@ namespace Messaging
 
     public:
         void sendHello();
+        void sendAgentLocation(Location &currentLocation, Location &targetLocation);
 
     protected:
         CommDetails _baseStation;

@@ -61,16 +61,18 @@ namespace System
 
         // TODO: make this a better matching, for now we will use most recently communicated from and assume ther is only one controller at time active.
         // Match active agents with active controllers
-        std::unique_lock<std::mutex> lock(_activeControllersMutex);
         unsigned char bestController = 0;
         unsigned long bestControllerTime = 0;
-        // Find the most recent controller
-        for(auto &controller: _activeControllers)
         {
-            if(controller.second.lastMsgTime >= bestControllerTime)
+            std::unique_lock<std::mutex> lock1(_activeControllersMutex);
+            // Find the most recent controller
+            for (auto &controller: _activeControllers)
             {
-                bestController = controller.first;
-                bestControllerTime = controller.second.lastMsgTime;
+                if (controller.second.lastMsgTime >= bestControllerTime)
+                {
+                    bestController = controller.first;
+                    bestControllerTime = controller.second.lastMsgTime;
+                }
             }
         }
 
@@ -79,6 +81,7 @@ namespace System
         {
             for (auto &agent: _activeAgents)
             {
+                std::unique_lock<std::mutex> lock2(_agentOwnerMutex);
                 auto ownerMapIter = _agentOwnerMap.find(agent.first);
                 if (ownerMapIter == _agentOwnerMap.end())
                 {
@@ -96,6 +99,27 @@ namespace System
                         ownerMapIter->second = bestController;
                     }
                 }
+            }
+        }
+
+        // Print out warnings for sizes
+        {
+            std::unique_lock<std::mutex> lock3(_activeAgentsMutex);
+            if (_activeAgents.size() > 10)
+            {
+                std::cout << "WARN: Too many _activeAgents " << _activeAgents.size() << std::endl;
+            }
+
+            std::unique_lock<std::mutex> lock4(_agentOwnerMutex);
+            if (_agentOwnerMap.size() > 10)
+            {
+                std::cout << "WARN: Too many _agentOwnerMap " << _agentOwnerMap.size() << std::endl;
+            }
+
+            std::unique_lock<std::mutex> lock5(_activeControllersMutex);
+            if (_activeControllers.size() > 10)
+            {
+                std::cout << "WARN: Too many _activeControllers " << _activeControllers.size() << std::endl;
             }
         }
 
@@ -181,9 +205,20 @@ namespace System
             return;
         }
 
-        // TODO: inject ownership into the message
+        // Inject ownership
+        std::unique_lock<std::mutex> lock(_agentOwnerMutex);
+        auto owneriter = _agentOwnerMap.find(agentLocation->agent_id);
+        if(owneriter == _agentOwnerMap.end())
+        {
+            // std::cout << " ERROR: Cannot find the owner of the agent " << (int)agentLocation->agent_id << std::endl;
+            return;
+        }
+
+        // Set the owner
+        agentLocation->owner_id = owneriter->second;
 
         // Broad cast to all controllers
+        std::unique_lock<std::mutex> lock2(_activeControllersMutex);
         for(auto controllerId: _activeControllers)
         {
             // Send the agent location out to each of the controllers registered
@@ -238,18 +273,23 @@ namespace System
         }
 
         // Make sure this controller owns control of this agent
-        auto agentOwnerItem = _agentOwnerMap.find(agentMoveCommand->agent_id);
-        if(agentOwnerItem == _agentOwnerMap.end() || agentOwnerItem->second != agentMoveCommand->header.source_id)
         {
-            std::cout << "Controller, " << (int)agentMoveCommand->header.source_id << " does not own " << (int)agentMoveCommand->agent_id << std::endl;
-            return;
+            std::unique_lock<std::mutex> lock(_agentOwnerMutex);
+            auto agentOwnerItem = _agentOwnerMap.find(agentMoveCommand->agent_id);
+            if (agentOwnerItem == _agentOwnerMap.end() || agentOwnerItem->second != agentMoveCommand->header.source_id)
+            {
+                std::cout << "Controller, " << (int) agentMoveCommand->header.source_id << " does not own "
+                          << (int) agentMoveCommand->agent_id << std::endl;
+                return;
+            }
         }
 
         // Grab this controllers details
+        std::unique_lock<std::mutex> lock(_activeControllersMutex);
         auto controller = _activeControllers.find(agentMoveCommand->header.source_id);
-        if(controller == _activeControllers.end())
+        if (controller == _activeControllers.end())
         {
-            std::cout << "Controller not found, " <<  (int)agentMoveCommand->header.source_id << std::endl;
+            std::cout << "Controller not found, " << (int) agentMoveCommand->header.source_id << std::endl;
             return;
         }
 
@@ -261,13 +301,14 @@ namespace System
 
         // Send to agent
         _communicator->sendAgentMove(agentMoveCommand->agent_id, transformedLocation);
-
     }
 
 
     // TYPE checker helpers
     bool BaseStation::isAgent(char nodeId)
     {
+        std::unique_lock<std::mutex> lock(_activeAgentsMutex);
+
         bool found = false;
         for(auto id: _activeAgents)
         {
@@ -282,6 +323,8 @@ namespace System
 
     bool BaseStation::isController(char nodeId)
     {
+        std::unique_lock<std::mutex> lock(_activeControllersMutex);
+
         bool found = false;
         for(auto id: _activeControllers)
         {

@@ -8,10 +8,27 @@ namespace Messaging
 {
 
     Communicator::Communicator(std::string baseIp, int port, unsigned char myId): Runnable(20.0f), _sockfdReceive(-1),
-    _sockfdSend(-1), _myId(myId), _threadPool(CALLBACK_HANDLER_THREAD_COUNT)
+    _sockfdSend(-1), _myId(myId)
     {
         _listenDetails.ipAddr = baseIp; // Listen on all interfaces
         _listenDetails.port = port; // Our listen port
+
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_ACK, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_HELLO, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_WELCOME, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
+#if BASE_MODE
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_AGENT_MOVE_COMMAND, new thread_pool::static_pool(5)));
+#else
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_AGENT_MOVE_COMMAND, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
+#endif
+
+#if BASE_MODE
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_AGENT_LOCATION, new thread_pool::static_pool(5)));
+#else
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_AGENT_LOCATION, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
+#endif
+
+        _threadPoolMap.emplace(std::make_pair(MessageID::MESSAGE_SUBJECT_LOCATION, new thread_pool::static_pool(CALLBACK_HANDLER_THREAD_COUNT)));
     }
 
     Communicator::~Communicator()
@@ -61,17 +78,17 @@ namespace Messaging
         struct timeval read_timeout;
         read_timeout.tv_sec = 0;
         read_timeout.tv_usec = 10;
-        setsockopt(_sockfdReceive, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
+        setsockopt(_sockfdReceive, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(timeval));
 
         // Bind the socket with the server address
-        if ( bind(_sockfdReceive, (const struct sockaddr *)&servaddrReceive, sizeof(servaddrReceive)) < 0 )
+        if ( bind(_sockfdReceive, (const struct sockaddr *)&servaddrReceive, sizeof(sockaddr_in)) < 0 )
         {
             perror("bind failed");
             exit(EXIT_FAILURE);
         }
 
         // Bind the socket with the server address
-        if ( bind(_sockfdSend, (const struct sockaddr *)&servaddrSend, sizeof(servaddrSend)) < 0 )
+        if ( bind(_sockfdSend, (const struct sockaddr *)&servaddrSend, sizeof(sockaddr_in)) < 0 )
         {
             perror("bind failed");
             exit(EXIT_FAILURE);
@@ -89,6 +106,9 @@ namespace Messaging
 
         if(length > 0)
         {
+            unsigned long timeNow = Utils::Time::microsNow();
+            if(_lastTimeReceived )
+
             auto header = (Header *) _buffer;
 
             if (header->message_id == MessageID::MESSAGE_HELLO)
@@ -99,7 +119,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_HELLO)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else if (header->message_id == MessageID::MESSAGE_WELCOME)
@@ -109,6 +129,7 @@ namespace Messaging
 
                 // SAve off our ID
                 _myId = welcome->node_id;
+                _baseId = welcome->header.source_id;
 
                 // Call callback
                 auto callback = _callbacks.find(MessageID::MESSAGE_WELCOME);
@@ -117,7 +138,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_WELCOME)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else if (header->message_id == MessageID::MESSAGE_ACK)
@@ -128,7 +149,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_ACK)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else if (header->message_id == MessageID::MESSAGE_AGENT_LOCATION)
@@ -139,7 +160,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_AGENT_LOCATION)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else if (header->message_id == MessageID::MESSAGE_AGENT_MOVE_COMMAND)
@@ -150,7 +171,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_AGENT_MOVE_COMMAND)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else if (header->message_id == MessageID::MESSAGE_SUBJECT_LOCATION)
@@ -161,7 +182,7 @@ namespace Messaging
                     // Call the callback with the received message
                     auto copied = new char[length];
                     memcpy(copied, _buffer, length);
-                    _threadPool.enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
+                    _threadPoolMap.find(MessageID::MESSAGE_SUBJECT_LOCATION)->second->enqueue(std::bind(&Communicator::callbackWrapper, this, callback->second, copied));
                 }
             }
             else

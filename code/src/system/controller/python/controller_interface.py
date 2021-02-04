@@ -236,6 +236,9 @@ class ControllerInterface:
     def _handle_agent_location(self, message: Message):
         assert isinstance(message, AgentLocation)
 
+        # print("new agent location: " + str(message.get_agent_id()))
+        # print("new agent location: " + str(message.get_current_location()))
+
         agent = None
         ownership_change = False
 

@@ -3,12 +3,13 @@
 //
 
 #include "Agent.h"
+#include <utils/thread/runnable/ThreadLoop.h>
 
 #include <messaging/messages/agent/agentLocation.h>
 
 #define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
-#define SET_POINT_TIMEOUT 1000000 * 2 // 2 seconds // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
+#define SET_POINT_TIMEOUT 1000000 * 10 // 2 seconds // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
 #define SETTLE_TIMES 10
 
@@ -17,6 +18,7 @@ namespace System
     Agent::Agent(): Runnable(10), _lastTargetTime(false), _agentState(AgentStateEnum::WAIT)
     {
         _communicator = new Messaging::DroneCommunicator();
+        _positionSendingThread = new Utils::Thread::ThreadLoop(std::bind(&Agent::sendPositionToGround, this), 5);
     }
 
     Agent::~Agent()
@@ -26,6 +28,8 @@ namespace System
 
     void Agent::doSetup()
     {
+        _positionSendingThread->setup();
+
         // Turn on Comms
         _communicator->setup();
         _communicator->run();
@@ -105,12 +109,12 @@ namespace System
         _action = std::make_shared<Action>(_system);
 
         // Subscribe to telemetry mesages
-        _telemetry->set_rate_position(40);
+        _telemetry->set_rate_position_velocity_ned(5);
         _telemetry->subscribe_position_velocity_ned(
             std::bind(&Agent::onNewPosition, this, std::placeholders::_1)
         );
 
-        _telemetry->set_rate_landed_state(10);
+        _telemetry->set_rate_landed_state(5);
         _telemetry->subscribe_landed_state([&](Telemetry::LandedState landedState){
             std::unique_lock<std::mutex> lock(_droneStateMutex);
 
@@ -144,6 +148,8 @@ namespace System
 
     void Agent::doRun()
     {
+        _positionSendingThread->run();
+
         // This function loops at a rate of 10 hz
 
         // Aquire locks
@@ -229,7 +235,7 @@ namespace System
                     }
 
                     // Send takeoff command
-                    std::cout << "Setting takeoff altitude..." << std::endl;
+                    // std::cout << "Setting takeoff altitude..." << std::endl;
                     auto result = _action->set_takeoff_altitude(-SAFE_ALTITUDE);
                     if (result == Action::Result::Success)
                     {
@@ -265,6 +271,7 @@ namespace System
 
                 // Check the position, we want to be at our takeoff location (some height above the ground point)
                 // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
+                // std::cout << "Waiting for takeoff to complete..." << std::endl;
                 if(atPosition(_homeLocationAir, true))
                 {
                     std::cout << "Drone at position, moving on." << std::endl;
@@ -288,7 +295,7 @@ namespace System
                 positionNedYaw.yaw_deg = 0;
                 targetLocationLock.unlock();
 
-                std::cout << "Setting set position for offboard control: (NED) " << positionNedYaw.north_m << ", " << positionNedYaw.east_m << ", " << positionNedYaw.down_m  << std::endl;
+                // std::cout << "Setting set position for offboard control: (NED) " << positionNedYaw.north_m << ", " << positionNedYaw.east_m << ", " << positionNedYaw.down_m  << std::endl;
                 auto result = _offboard->set_position_ned(positionNedYaw);
                 if(result != Offboard::Result::Success)
                 {
@@ -406,6 +413,8 @@ namespace System
 
     void Agent::doStop()
     {
+        _positionSendingThread->stop();
+
         std::unique_lock<std::mutex> droneStateLock(_droneStateMutex);
         while(_droneState != Telemetry::LandedState::OnGround)
         {
@@ -452,7 +461,7 @@ namespace System
 
         if(zOnly)
         {
-            d = target.z - _currentPosition.z;
+            d = std::abs(target.z - _currentPosition.z);
         }
         else
         {
@@ -494,28 +503,43 @@ namespace System
     // Messaging Callbacks
     void Agent::onAgentMoveCommand(char* agentMoveCommandMessage)
     {
-        // auto tmp = (AgentMoveCommand*) agentMoveCommandMessage;
-        // std::cout << "MOVE START: " <<  tmp->header.timestamp << std::endl;
+        std::unique_lock<std::mutex> actionStateLock(_agentStateMutex);
+        _staleTarget = false;
+        _agentStateCV.notify_all();
+        actionStateLock.unlock();
+
         std::unique_lock<std::mutex> lock(_targetCommandMutex);
+        _newTargetReceivedTimeUs = Utils::Time::microsNow();
+
+        auto casted = (AgentMoveCommand*) agentMoveCommandMessage;
+        if(casted->target_location.x == _newMoveCommand.target_location.x && casted->target_location.y == _newMoveCommand.target_location.y && casted->target_location.z == _newMoveCommand.target_location.z)
+        {
+            return;
+        }
+        else
+        {
+            std::cout << "New set point" << std::endl;
+        }
 
         // Save off the old command
         _lastMoveCommand = _newMoveCommand;
 
         // copy to our class var (this gets deleted once this callback is over)
-        _newTargetReceivedTimeUs = Utils::Time::microsNow();
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
+    }
 
-        // char arr[sizeof(AgentMoveCommand)];
-        // memcpy(arr, agentMoveCommandMessage, sizeof(AgentMoveCommand));
+    void Agent::sendPositionToGround()
+    {
+        std::unique_lock<std::mutex> lock1(_currentPositionMutex);
+        std::unique_lock<std::mutex> lock2(_targetCommandMutex);
 
-        // std::cout << "Agent move command from " << (int)_newMoveCommand.header.source_id << std::endl;
+        Location currentLocation = _currentPosition;
+        Location targetLocation = _newMoveCommand.target_location;
 
-        // Mark this as NOT stale
-        std::lock_guard<std::mutex> actionStateLock(_agentStateMutex);
-        _staleTarget = false;
-        _agentStateCV.notify_all();
-        // std::cout << "MOVE END: " <<  tmp->header.timestamp << std::endl;
+        lock1.unlock();
+        lock2.unlock();
 
+        _communicator->sendAgentLocation(currentLocation, targetLocation);
     }
     // End Messaging Callbacks
 }
