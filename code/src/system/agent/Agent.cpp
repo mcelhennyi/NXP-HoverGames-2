@@ -8,7 +8,7 @@
 
 #define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
-#define SET_POINT_TIMEOUT 10000000 // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
+#define SET_POINT_TIMEOUT 1000000 * 2 // 2 seconds // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
 #define SETTLE_TIMES 10
 
@@ -191,8 +191,6 @@ namespace System
                 _agentStateCV.wait(agentStateLock, [&](){ return !(_staleTarget.load()); });
                 droneStateLock.lock();
 
-
-
                 // The target is not stale, lets go after it (takeoff first)
                 if (!_staleTarget)
                 {
@@ -300,8 +298,8 @@ namespace System
                 {
                     std::unique_lock<std::mutex> lock(_flightModeMutex);
 
-                    std::cout << "Offboard mode is " << _offboard->is_active() << std::endl;
-                    std::cout << "Flight mode is offboard: " << (_flightMode == Telemetry::FlightMode::Offboard) << std::endl;
+                    // std::cout << "Offboard mode is " << _offboard->is_active() << std::endl;
+                    // std::cout << "Flight mode is offboard: " << (_flightMode == Telemetry::FlightMode::Offboard) << std::endl;
                     if(_flightMode != Telemetry::FlightMode::Offboard)
                     {
                         lock.unlock();
@@ -340,17 +338,18 @@ namespace System
                 if(atPosition(_homeLocationAir))
                 {
                     // Turn off offboard mode
-                    std::cout << "Disabling offboard mode..."<<std::endl;
-                    result = _offboard->stop();
-                    if(result == Offboard::Result::Success)
-                    {
-                        std::cout << "Offboard mode disabled, LANDing"<<std::endl;
+                    // std::cout << "Disabling offboard mode..."<<std::endl;
+                    // result = _offboard->stop();
+                    // TODO: COmmand denied when sending this stop (change to HOLD) command...why???
+                    // if(result == Offboard::Result::Success)
+                    // {
+                    //     std::cout << "Offboard mode disabled, LANDing"<<std::endl;
                         nextState = AgentStateEnum::LAND;
-                    }
-                    else
-                    {
-                        std::cout << "Error: Failed to turn off offboard mode, result: " << result << std::endl;
-                    }
+                    // }
+                    // else
+                    // {
+                    //     std::cout << "Error: Failed to turn off offboard mode, result: " << result << std::endl;
+                    // }
                 }
                 break;
             }
@@ -358,11 +357,12 @@ namespace System
             {
                 agentStateLock.unlock();
 
-                if(_droneState == Telemetry::LandedState::InAir)
+                if(_droneState != Telemetry::LandedState::Landing && _droneState != Telemetry::LandedState::OnGround)
                 {
                     droneStateLock.unlock();
 
                     // Send land command
+                    std::cout << "Sending land command to AP..." << std::endl;
                     auto result = _action->land();
                     if(result != Action::Result::Success)
                     {
@@ -376,14 +376,17 @@ namespace System
                 else if(_droneState == Telemetry::LandedState::OnGround)
                 {
                     // Now disarm and wait
-                    auto result = _action->disarm();
-                    if(result != Action::Result::Success)
+                    std::cout << "Disarming AP..." << std::endl;
+                    // auto result = _action->disarm();  // TODO: This blocks for ever for some reason...
+                    // if(result != Action::Result::Success)
+                    if(_armed)
                     {
-                        std::cout << "Error: Failed to command a disarm, result: " << result << std::endl;
+                        // std::cout << "Error: Failed to command a disarm, result: " << result << std::endl;
                     }
                     else
                     {
                         // Success, lets WAIT
+                        std::cout << "Disarmed." << std::endl;
                         nextState = AgentStateEnum::WAIT;
                     }
                 }
