@@ -79,6 +79,8 @@ namespace System
         std::mutex                          _droneStateMutex;
         Telemetry::LandedState              _droneState;
         std::atomic_bool                    _takeoffCommanded;
+        std::mutex                          _flightModeMutex;
+        Telemetry::FlightMode               _flightMode;
 
         // States
         AgentStateEnum                      _agentState;

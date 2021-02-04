@@ -132,6 +132,11 @@ namespace System
             _armed = armed;
         });
 
+        _telemetry->subscribe_flight_mode([&](Telemetry::FlightMode flightMode){
+            std::unique_lock<std::mutex> lock(_flightModeMutex);
+            _flightMode = flightMode;
+        });
+
         // Grab the offboard controller
         _offboard = std::make_shared<Offboard>(_system);
 
@@ -293,9 +298,14 @@ namespace System
                 }
                 else
                 {
+                    std::unique_lock<std::mutex> lock(_flightModeMutex);
+
                     std::cout << "Offboard mode is " << _offboard->is_active() << std::endl;
-                    if(!_offboard->is_active())
+                    std::cout << "Flight mode is offboard: " << (_flightMode == Telemetry::FlightMode::Offboard) << std::endl;
+                    if(_flightMode != Telemetry::FlightMode::Offboard)
                     {
+                        lock.unlock();
+
                         std::cout << "Starting offboard control..." << std::endl;
                         result = _offboard->start();
                         if (result != Offboard::Result::Success)
