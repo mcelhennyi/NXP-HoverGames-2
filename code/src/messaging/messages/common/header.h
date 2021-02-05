@@ -5,6 +5,8 @@
 #ifndef HOVERGAMES2_HEADER_H
 #define HOVERGAMES2_HEADER_H
 
+#include <iostream>
+
 namespace Messaging
 {
     namespace Messages
@@ -30,6 +32,33 @@ namespace Messaging
                 MESSAGE_AGENT_LOCATION
 
             };
+
+            inline std::string messageIdToString(MessageID messageId)
+            {
+                switch(messageId)
+                {
+                    case MessageID::MESSAGE_ACK:
+                        return "MESSAGE_ACK";
+                    case MessageID::MESSAGE_HELLO:
+                        return "MESSAGE_HELLO";
+                    case MessageID::MESSAGE_WELCOME:
+                        return "MESSAGE_WELCOME";
+                    case MessageID::MESSAGE_AGENT_MOVE_COMMAND:
+                        return "MESSAGE_AGENT_MOVE_COMMAND";
+                    case MessageID::MESSAGE_SUBJECT_LOCATION:
+                        return "MESSAGE_SUBJECT_LOCATION";
+                    case MessageID::MESSAGE_AGENT_LOCATION:
+                        return "MESSAGE_AGENT_LOCATION";
+                    default:
+                        return "UNKNOWN MESSAGE";
+                }
+
+            }
+
+            inline std::ostream& operator<<(std::ostream& stream, const MessageID& messageId)
+            {
+                return stream << messageIdToString(messageId);
+            }
 
             struct Header
             {

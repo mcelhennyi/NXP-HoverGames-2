@@ -6,7 +6,7 @@
 #define HOVERGAMES2_COMMUNICATOR_H
 
 #include <utils/thread/thread_pool/includes/static_pool.hpp>
-#include <utils/util_time.h>
+#include <utils/time/util_time.h>
 
 #include <utils/thread/runnable/Runnable.h>
 
@@ -92,6 +92,7 @@ namespace Messaging
         char                                                _buffer[MAXLINE];
 
         unsigned long                                       _lastTimeReceived;
+        unsigned long                                       _lastPrintTime;
 
         // Track the node locations
         std::map<unsigned char, CommDetails>                _nodes;

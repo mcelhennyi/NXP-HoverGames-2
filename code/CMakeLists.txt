@@ -39,8 +39,8 @@ add_executable(
         src/system/agent/Agent.h
         src/utils/thread/runnable/Runnable.cpp
         src/utils/thread/runnable/Runnable.h
-        src/utils/util_time.h
-        src/utils/thread/runnable/ThreadLoop.h)
+        src/utils/time/util_time.h
+        src/utils/thread/runnable/ThreadLoop.h src/utils/time/ticker.h)
 
 TARGET_LINK_LIBRARIES(
     HoverGames2

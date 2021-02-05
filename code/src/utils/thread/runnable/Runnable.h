@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "utils/util_time.h"
+#include "utils/time/util_time.h"
 
 class Runnable
 {
@@ -38,7 +38,8 @@ public:
         _running = true;
 
         // Setup the thread and start it
-        _thread = new std::thread(&Runnable::internalRun, this);
+        if(_thread == nullptr)
+            _thread = new std::thread(&Runnable::internalRun, this);
     };
 
     void stop()

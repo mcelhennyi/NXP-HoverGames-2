@@ -6,6 +6,7 @@
 #include <utils/thread/runnable/ThreadLoop.h>
 
 #include <messaging/messages/agent/agentLocation.h>
+#include <utils/time/ticker.h>
 
 #define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
@@ -148,6 +149,9 @@ namespace System
 
     void Agent::doRun()
     {
+        static auto msgTicker1 = new Utils::Time::Ticker(1, "Start Run");
+        msgTicker1->tick();
+
         _positionSendingThread->run();
 
         // This function loops at a rate of 10 hz
@@ -409,6 +413,9 @@ namespace System
         _lastAgentState = _agentState;
         _agentState = nextState;
 
+        static auto msgTicker2 = new Utils::Time::Ticker(1, "End Run", msgTicker1);
+        msgTicker2->tick();
+
     }
 
     void Agent::doStop()
@@ -493,6 +500,9 @@ namespace System
 
     void Agent::onNewPosition(Telemetry::PositionVelocityNed posvel)
     {
+        static auto msgTicker1 = new Utils::Time::Ticker(1, "New position");
+        msgTicker1->tick();
+
         std::unique_lock<std::mutex> lock(_currentPositionMutex);
         _currentPosition.x = posvel.position.north_m;
         _currentPosition.y = posvel.position.east_m;
@@ -503,6 +513,9 @@ namespace System
     // Messaging Callbacks
     void Agent::onAgentMoveCommand(char* agentMoveCommandMessage)
     {
+        static auto msgTicker1 = new Utils::Time::Ticker(1, "Start agent move");
+        msgTicker1->tick();
+
         std::unique_lock<std::mutex> actionStateLock(_agentStateMutex);
         _staleTarget = false;
         _agentStateCV.notify_all();
@@ -514,6 +527,8 @@ namespace System
         auto casted = (AgentMoveCommand*) agentMoveCommandMessage;
         if(casted->target_location.x == _newMoveCommand.target_location.x && casted->target_location.y == _newMoveCommand.target_location.y && casted->target_location.z == _newMoveCommand.target_location.z)
         {
+            static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
+            msgTicker2->tick();
             return;
         }
         else
@@ -526,10 +541,15 @@ namespace System
 
         // copy to our class var (this gets deleted once this callback is over)
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
+        static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
+        msgTicker2->tick();
     }
 
     void Agent::sendPositionToGround()
     {
+        static auto msgTicker1 = new Utils::Time::Ticker(1, "Send position to ground");
+        msgTicker1->tick();
+
         std::unique_lock<std::mutex> lock1(_currentPositionMutex);
         std::unique_lock<std::mutex> lock2(_targetCommandMutex);
 

@@ -5,7 +5,7 @@
 #ifndef HOVERGAMES2_BASESTATIONCOMMUNICATOR_H
 #define HOVERGAMES2_BASESTATIONCOMMUNICATOR_H
 
-#include "../utils/util_time.h"
+#include "utils/time/util_time.h"
 
 #include "Communicator.h"
 
