@@ -108,21 +108,15 @@ namespace Messaging
 
         if(length > 0)
         {
-            static auto msgTicker = new Utils::Time::Ticker(1, "Message Received");
-            msgTicker->tick();
-
-            unsigned long timeNow = Utils::Time::microsNow();
-            if(timeNow - _lastPrintTime > 1000000)
-            {
-
-            }
+            // static auto msgTicker = new Utils::Time::Ticker(1, "Message Received");
+            // msgTicker->tick();
 
             auto header = (Header *) _buffer;
 
             if (header->message_id == MessageID::MESSAGE_HELLO)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Hello Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Hello Message");
+                // msgTicker->tick();
 
                 auto callback = _callbacks.find(MessageID::MESSAGE_HELLO);
                 if (callback != _callbacks.end())
@@ -135,8 +129,8 @@ namespace Messaging
             }
             else if (header->message_id == MessageID::MESSAGE_WELCOME)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Welcome Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Welcome Message");
+                // msgTicker->tick();
 
                 // Cast Message
                 auto welcome = (Welcome*) _buffer;
@@ -157,8 +151,8 @@ namespace Messaging
             }
             else if (header->message_id == MessageID::MESSAGE_ACK)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Ack Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Ack Message");
+                // msgTicker->tick();
 
                 auto callback = _callbacks.find(MessageID::MESSAGE_ACK);
                 if (callback != _callbacks.end())
@@ -171,8 +165,8 @@ namespace Messaging
             }
             else if (header->message_id == MessageID::MESSAGE_AGENT_LOCATION)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Agent Location Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Agent Location Message");
+                // msgTicker->tick();
 
                 auto callback = _callbacks.find(MessageID::MESSAGE_AGENT_LOCATION);
                 if (callback != _callbacks.end())
@@ -185,8 +179,8 @@ namespace Messaging
             }
             else if (header->message_id == MessageID::MESSAGE_AGENT_MOVE_COMMAND)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Agent Move Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Agent Move Message");
+                // msgTicker->tick();
 
                 auto callback = _callbacks.find(MessageID::MESSAGE_AGENT_MOVE_COMMAND);
                 if (callback != _callbacks.end())
@@ -199,8 +193,8 @@ namespace Messaging
             }
             else if (header->message_id == MessageID::MESSAGE_SUBJECT_LOCATION)
             {
-                static auto msgTicker = new Utils::Time::Ticker(1, "Subject Location Message");
-                msgTicker->tick();
+                // static auto msgTicker = new Utils::Time::Ticker(1, "Subject Location Message");
+                // msgTicker->tick();
 
                 auto callback = _callbacks.find(MessageID::MESSAGE_SUBJECT_LOCATION);
                 if (callback != _callbacks.end())
@@ -310,8 +304,8 @@ namespace Messaging
 
     void Communicator::sendMessage(CommDetails &commDetails, char *message, int length)
     {
-        static auto msgTicker = new Utils::Time::Ticker(1, "");
-        msgTicker->tick("Sending message " + messageIdToString((MessageID)message[0]));
+        // static auto msgTicker = new Utils::Time::Ticker(1, "");
+        // msgTicker->tick("Sending message " + messageIdToString((MessageID)message[0]));
 
         struct sockaddr_in servaddr = convertToCStruct(commDetails);
         int ret = sendto(

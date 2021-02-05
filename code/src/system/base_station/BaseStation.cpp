@@ -58,8 +58,8 @@ namespace System
 
     void BaseStation::doRun()
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "Run");
-        msgTicker1->tick();
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "Run");
+        // msgTicker1->tick();
 
         // Called specified rate in constructor
 
@@ -140,8 +140,8 @@ namespace System
     // -------------------------- //
     void System::BaseStation::handleNewNode(char *helloMessage)
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "");
-        msgTicker1->tick("Start handle new node");
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "");
+        // msgTicker1->tick("Start handle new node");
 
         // Cast the message
         auto hello = (Messaging::Messages::Common::Hello*) helloMessage;
@@ -192,8 +192,8 @@ namespace System
         << " with ID " << (int) nodeId << std::endl;
         _communicator->sendWelcome(ipAddr, hello->listeningPort, nodeId);
 
-        static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
-        msgTicker2->tick("Start handle new node");
+        // static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
+        // msgTicker2->tick("Start handle new node");
     }
 
     void BaseStation::handleAck(char *ackMessage)
@@ -204,8 +204,8 @@ namespace System
 
     void BaseStation::handleAgentLocation(char *agentLocationMessage)
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "");
-        msgTicker1->tick("Start agent location");
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "");
+        // msgTicker1->tick("Start agent location");
 
         // When we get a location, lets verify its from an agent....then lets forward it out to all the controllers
 
@@ -238,8 +238,8 @@ namespace System
             _communicator->forwardAgentLocation(controllerId.first, agentLocation);
         }
 
-        static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
-        msgTicker2->tick("End agent location");
+        // static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
+        // msgTicker2->tick("End agent location");
     }
 
     void BaseStation::handleSubjectLocation(char *subjectLocationMessage)
@@ -266,8 +266,8 @@ namespace System
 
     void BaseStation::handleAgentMoveCommand(char *agentMoveCommandMessage)
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "");
-        msgTicker1->tick("Start agent move command");
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "");
+        // msgTicker1->tick("Start agent move command");
 
         // Lets make sure this move command 1) came from a controller, 2) came from a controller who owns the agent
 
@@ -321,8 +321,8 @@ namespace System
 
         // Send to agent
         _communicator->sendAgentMove(agentMoveCommand->agent_id, transformedLocation);
-        static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
-        msgTicker2->tick("End agent move command");
+        // static auto msgTicker2 = new Utils::Time::Ticker(1, "", msgTicker1);
+        // msgTicker2->tick("End agent move command");
     }
 
 

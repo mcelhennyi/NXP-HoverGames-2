@@ -10,7 +10,7 @@
 
 #define CONNECTION_URL "tcp://127.0.0.1:5760"
 #define SAFE_ALTITUDE -2 // (NED) The altitude to fly at - this overrides all Zs sent.
-#define SET_POINT_TIMEOUT 1000000 * 10 // 2 seconds // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
+#define SET_POINT_TIMEOUT 1000000 * 2 // 2 seconds // TODO PUT BACK(uint64_t)((1.0 / 5.0) * 1000000)  // 5Hz worth of timeout (we expect 10 HZ) - converted to micros
 #define DISTANCE_THRESHOLD 0.2 // meters
 #define SETTLE_TIMES 10
 
@@ -149,8 +149,8 @@ namespace System
 
     void Agent::doRun()
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "Start Run");
-        msgTicker1->tick();
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "Start Run");
+        // msgTicker1->tick();
 
         _positionSendingThread->run();
 
@@ -174,8 +174,10 @@ namespace System
             // Make sure we do a shutdown sequence when we stop getting messages
             if(_agentState == AgentStateEnum::TAKEOFF || _agentState == AgentStateEnum::TARGETING_MODE)
             {
-                std::cout << "Commanding RTL due to message timeout." << std::endl;
+                static auto rtlTicker = new Utils::Time::Ticker(1, "");
+                rtlTicker->tick("Commanding RTL due to message timeout.");
                 _agentState = AgentStateEnum::RETURN_TO_LAUNCH;  // Here we set directly
+                nextState = _agentState;  // Here we set directly
             }
         }
         else
@@ -273,6 +275,9 @@ namespace System
                 //     std::cout << "Waiting on takeoff sequence to complete" << std::endl;
                 // }
 
+                static auto takeoffTicker = new Utils::Time::Ticker(1, "Waiting on takeoff to complete...");
+                takeoffTicker->tick();
+
                 // Check the position, we want to be at our takeoff location (some height above the ground point)
                 // TODO: Monitor for position - this may not be needed if all we need is the INAIR state.
                 // std::cout << "Waiting for takeoff to complete..." << std::endl;
@@ -345,6 +350,9 @@ namespace System
                     std::cout << "Error: Failed to change set point in RETURN_TO_LAUNCH mode, result: " << result << std::endl;
                 }
 
+                static auto rtlTicker = new Utils::Time::Ticker(1, "Returning home...");
+                rtlTicker->tick();
+
                 // Monitor position till we are near launch, then land.
                 if(atPosition(_homeLocationAir))
                 {
@@ -387,7 +395,9 @@ namespace System
                 else if(_droneState == Telemetry::LandedState::OnGround)
                 {
                     // Now disarm and wait
-                    std::cout << "Disarming AP..." << std::endl;
+                    // std::cout << "Disarming AP..." << std::endl;
+                    static auto disarmingTicker = new Utils::Time::Ticker(1, "Disarming...");
+                    disarmingTicker->tick();
                     // auto result = _action->disarm();  // TODO: This blocks for ever for some reason...
                     // if(result != Action::Result::Success)
                     if(_armed)
@@ -413,8 +423,8 @@ namespace System
         _lastAgentState = _agentState;
         _agentState = nextState;
 
-        static auto msgTicker2 = new Utils::Time::Ticker(1, "End Run", msgTicker1);
-        msgTicker2->tick();
+        // static auto msgTicker2 = new Utils::Time::Ticker(1, "End Run", msgTicker1);
+        // msgTicker2->tick();
 
     }
 
@@ -500,8 +510,8 @@ namespace System
 
     void Agent::onNewPosition(Telemetry::PositionVelocityNed posvel)
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "New position");
-        msgTicker1->tick();
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "New position");
+        // msgTicker1->tick();
 
         std::unique_lock<std::mutex> lock(_currentPositionMutex);
         _currentPosition.x = posvel.position.north_m;
@@ -513,8 +523,8 @@ namespace System
     // Messaging Callbacks
     void Agent::onAgentMoveCommand(char* agentMoveCommandMessage)
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "Start agent move");
-        msgTicker1->tick();
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "Start agent move");
+        // msgTicker1->tick();
 
         std::unique_lock<std::mutex> actionStateLock(_agentStateMutex);
         _staleTarget = false;
@@ -527,8 +537,8 @@ namespace System
         auto casted = (AgentMoveCommand*) agentMoveCommandMessage;
         if(casted->target_location.x == _newMoveCommand.target_location.x && casted->target_location.y == _newMoveCommand.target_location.y && casted->target_location.z == _newMoveCommand.target_location.z)
         {
-            static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
-            msgTicker2->tick();
+            // static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
+            // msgTicker2->tick();
             return;
         }
         else
@@ -541,14 +551,14 @@ namespace System
 
         // copy to our class var (this gets deleted once this callback is over)
         _newMoveCommand = *((AgentMoveCommand*) agentMoveCommandMessage);
-        static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
-        msgTicker2->tick();
+        // static auto msgTicker2 = new Utils::Time::Ticker(1, "End agent move", msgTicker1);
+        // msgTicker2->tick();
     }
 
     void Agent::sendPositionToGround()
     {
-        static auto msgTicker1 = new Utils::Time::Ticker(1, "Send position to ground");
-        msgTicker1->tick();
+        // static auto msgTicker1 = new Utils::Time::Ticker(1, "Send position to ground");
+        // msgTicker1->tick();
 
         std::unique_lock<std::mutex> lock1(_currentPositionMutex);
         std::unique_lock<std::mutex> lock2(_targetCommandMutex);
