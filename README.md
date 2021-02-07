@@ -8,6 +8,9 @@
 [Ian McElhenny](https://www.linkedin.com/in/ian-mcelhenny)  
 [Adam Berlier](https://www.linkedin.com/in/ajberlier/)
 
+## Wiki
+Checkout our Wiki [Here](https://github.com/mcelhennyi/NXP-HoverGames-2/wiki)!
+
 ## Our goal
 Wild animals destroy property, kill/infect livestock, as well as harm agriculture. We will create a drone that can herd wild animals, preventing such harm.
 
