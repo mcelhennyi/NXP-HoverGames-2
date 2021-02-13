@@ -4,3 +4,6 @@
 [submodule "code/src/utils/thread/thread_pool"]
 	path = code/src/utils/thread/thread_pool
 	url = https://github.com/mcelhennyi/thread_pools.git
+[submodule "code/src/system/controller/gym_scarecrow"]
+	path = code/src/system/controller/gym_scarecrow
+	url = https://github.com/ajberlier/gym-scarecrow.git
