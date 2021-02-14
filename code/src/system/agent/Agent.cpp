@@ -354,7 +354,7 @@ namespace System
                 rtlTicker->tick();
 
                 // Monitor position till we are near launch, then land.
-                if(atPosition(_homeLocationAir))
+                if(atPosition(_homeLocationAir)|| _droneState == Telemetry::LandedState::OnGround)
                 {
                     // Turn off offboard mode
                     // std::cout << "Disabling offboard mode..."<<std::endl;

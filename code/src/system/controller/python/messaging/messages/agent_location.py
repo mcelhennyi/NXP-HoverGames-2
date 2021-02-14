@@ -5,7 +5,7 @@ from src.system.controller.python.messaging.messages import Message, agent_locat
 
 class AgentLocation(Message):
     def __init__(self,
-                 # From raw bytes
+                 # from  raw bytes
                  raw_bytes=None,
 
                  # Constructed as command
